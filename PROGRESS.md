@@ -43,11 +43,14 @@
 - 통합 main: `npm test` 27/27, 빌드 통과(Middleware 포함)
 - ⚠️ **미검증**: 실제 Supabase 대상 동작 — 아래 수동 작업 완료 후 스모크 필요
 
-### 다음 할 일 — 사용자 수동 작업 (Phase 2 완료 기준 검증 블로커)
-1. **SQL Editor에서 0002 마이그레이션 실행** (supabase/migrations/0002_guardians_seniors_schedules.sql 전체 붙여넣기, 멱등)
-2. **Supabase Auth 설정**: ① URL Configuration → Site URL·Redirect URLs에 `https://voicescheduler.vercel.app/**`, `http://localhost:3000/**` ② Email Templates → Magic Link 링크를 `{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/app` 로 변경 (기본 ConfirmationURL로는 동작 안 함)
+### 다음 할 일
+1. ~~0002 마이그레이션 실행~~ ✅ 완료 (사용자, SQL Editor)
+2. ~~Auth URL 설정~~ ✅ 완료 (Site URL=localhost:3000(임시)·Redirect URLs 2종)
+   - ⚠️ **이메일 템플릿 수정은 불가** — 2026-06부터 신규 무료 프로젝트는 기본 메일 제공자로 템플릿 편집 차단 → 콜백에 PKCE `?code=` 교환 경로 추가로 대응(0e98533, 기본 ConfirmationURL 템플릿 그대로 동작. token_hash 경로도 유지). PKCE 한계: 메일을 **요청한 브라우저에서** 링크를 열어야 함
 3. 로컬 스모크: /app→/login redirect → 메일 로그인 → 피보호자 등록(동의) → 일정 등록 → 토글 ON → 대시보드 오늘 인스턴스 표시 확인 → **Phase 2 완료 판정**
-4. 이후 Vercel 배포 + Phase 3 (벤더 비교 선행 결정 필요 — PLAN 3-0)
+4. 스모크 후: Site URL을 `https://voicescheduler.vercel.app`으로 원복 + Vercel 배포
+5. **베타 공개 전 커스텀 SMTP 연결 필수** — 무료 기본 메일은 프로젝트 전체 시간당 2통 제한. SMTP 연결 시 30통/h + 템플릿 편집 재개방(도메인 없으면 Brevo 단일 발신자 인증 또는 Gmail 앱 비밀번호)
+6. Phase 3 (벤더 비교 선행 결정 필요 — PLAN 3-0)
 
 ### 완료 (Phase 1 — 2026-07-06)
 - 보호자 웹 전 화면 mock 완성 (ui-builder): `/app`(대시보드)·`/app/seniors`(동의 체크박스 폼)·`/app/schedules`(ON/OFF 토글+RRULE 폼)·`/app/calls`+`[id]`(전사 타임라인)·`/app/reports`(MEDICAL_DISCLAIMER 고정)·`/app/settings`
