@@ -30,6 +30,25 @@
 - 프로덕션 스모크 통과 (랜딩 200/CTA 204/waitlist 201/OG 렌더), 테스트 데이터 정리 완료 (테이블 0행)
 - `lib/contracts/domain.ts` 선커밋: Senior/Schedule/CallSession/CallTurn/CallReport zod 스키마 + 상태 라벨 + MEDICAL_DISCLAIMER
 
+### 완료 (Phase 2 코드 — 2026-07-06)
+- **데이터 계층** (data-api, reviewer PASS, 머지 8d1dd1b):
+  - `supabase/migrations/0002_guardians_seniors_schedules.sql`: guardians/seniors/schedules + RLS(guardian_id = auth.uid() 격리) + 동의 트리거(미동의 active 차단, 동의 철회 시 일정 자동 OFF) + auth.users→guardians 자동 생성(security definer, search_path 고정)
+  - Auth: `@supabase/ssr` 서버/브라우저 클라이언트, `middleware.ts`(/app/* 가드→/login), magic link(`/api/auth/confirm` verifyOtp token_hash 방식), 로그아웃
+  - CRUD server actions: `lib/actions/seniors.ts`·`schedules.ts` (zod 검증, RLS 클라이언트 경유, admin 미사용, 동의 이중 방어), 조회 `lib/db/queries.ts`
+  - `lib/scheduling/occurrences.ts`: RRULE→다음 발신 시각, Asia/Seoul 명시(rrule UTC 함정 우회 — FREQ/BYDAY만 파싱 후 fromZonedTime), 유닛 테스트 18개
+  - **지원 RRULE 범위: `FREQ=DAILY` / `FREQ=WEEKLY;BYDAY=...` 만** (그 외 InvalidRruleError — 폼도 이 두 형태만 생성)
+- **UI 결합** (ui-builder, reviewer PASS, 머지됨):
+  - `/login` 신규(magic link 폼), 대시보드 오늘 일정→`getTodayCallInstances()` 실데이터, seniors/schedules CRUD 폼·토글 실연결(낙관적 갱신+원복), 설정에 이메일+로그아웃, 빈 상태 UI
+  - mock 잔존(Phase 3 범위, "예시 데이터" 라벨 부착): `/app/calls`(+상세), `/app/reports`, 대시보드 주간 이행률·최근 통화 결과
+- 통합 main: `npm test` 27/27, 빌드 통과(Middleware 포함)
+- ⚠️ **미검증**: 실제 Supabase 대상 동작 — 아래 수동 작업 완료 후 스모크 필요
+
+### 다음 할 일 — 사용자 수동 작업 (Phase 2 완료 기준 검증 블로커)
+1. **SQL Editor에서 0002 마이그레이션 실행** (supabase/migrations/0002_guardians_seniors_schedules.sql 전체 붙여넣기, 멱등)
+2. **Supabase Auth 설정**: ① URL Configuration → Site URL·Redirect URLs에 `https://voicescheduler.vercel.app/**`, `http://localhost:3000/**` ② Email Templates → Magic Link 링크를 `{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/app` 로 변경 (기본 ConfirmationURL로는 동작 안 함)
+3. 로컬 스모크: /app→/login redirect → 메일 로그인 → 피보호자 등록(동의) → 일정 등록 → 토글 ON → 대시보드 오늘 인스턴스 표시 확인 → **Phase 2 완료 판정**
+4. 이후 Vercel 배포 + Phase 3 (벤더 비교 선행 결정 필요 — PLAN 3-0)
+
 ### 완료 (Phase 1 — 2026-07-06)
 - 보호자 웹 전 화면 mock 완성 (ui-builder): `/app`(대시보드)·`/app/seniors`(동의 체크박스 폼)·`/app/schedules`(ON/OFF 토글+RRULE 폼)·`/app/calls`+`[id]`(전사 타임라인)·`/app/reports`(MEDICAL_DISCLAIMER 고정)·`/app/settings`
 - 공통: `components/app/` StatusBadge(6종 뱃지)·AppNav(모바일 탭바+데스크톱 사이드)·format.ts(KST 문자열 포맷, Date 연산 없음)
@@ -37,12 +56,11 @@
 - **Phase 1 완료 기준 충족: 로그인 없이 mock으로 전 화면 클릭 가능**
 
 ### 진행 중
-- 없음 — Phase 1까지 전부 커밋됨(858fe41). 사용자가 데모(`localhost:3000/app`) 확인 후 다음 세션에서 Phase 2 진행하기로 함 (2026-07-06)
+- Phase 2 코드 완료·머지됨. 사용자 수동 작업(위 섹션) 후 스모크만 남음.
 
-### 다음 할 일 (다음 세션 시작점)
-1. **Phase 2 시작** (Supabase Auth magic link + guardians/seniors/schedules 테이블·RLS + mock→실데이터 교체 + RRULE 다음 발신 시각 계산 KST 유닛 테스트) — data-api 주도, 계약은 lib/contracts/domain.ts 기준
-2. 디자인 토큰 확정값 오면 globals.css 교체 (Phase 1 항목 4)
-3. ADMIN_PASSWORD(vs-beta-2026) 설문 배포 전 변경 권장
+### 기타 대기 항목
+1. 디자인 토큰 확정값 오면 globals.css 교체 (Phase 1 항목 4)
+2. ADMIN_PASSWORD(vs-beta-2026) 설문 배포 전 변경 권장
 
 ### 결정사항
 - **스택 버전 (호환성 우선, 메이저 업그레이드는 오케스트레이터 승인 필요)**:
