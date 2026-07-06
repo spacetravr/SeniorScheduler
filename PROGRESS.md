@@ -30,14 +30,19 @@
 - 프로덕션 스모크 통과 (랜딩 200/CTA 204/waitlist 201/OG 렌더), 테스트 데이터 정리 완료 (테이블 0행)
 - `lib/contracts/domain.ts` 선커밋: Senior/Schedule/CallSession/CallTurn/CallReport zod 스키마 + 상태 라벨 + MEDICAL_DISCLAIMER
 
+### 완료 (Phase 1 — 2026-07-06)
+- 보호자 웹 전 화면 mock 완성 (ui-builder): `/app`(대시보드)·`/app/seniors`(동의 체크박스 폼)·`/app/schedules`(ON/OFF 토글+RRULE 폼)·`/app/calls`+`[id]`(전사 타임라인)·`/app/reports`(MEDICAL_DISCLAIMER 고정)·`/app/settings`
+- 공통: `components/app/` StatusBadge(6종 뱃지)·AppNav(모바일 탭바+데스크톱 사이드)·format.ts(KST 문자열 포맷, Date 연산 없음)
+- reviewer FAIL 1건(fmtRrule 유닛 테스트 누락) → ui-builder가 format.test.ts 추가(9 테스트, 요일 정렬 버그 발견·수정) → `npm test` exit 0, 빌드 21라우트 통과
+- **Phase 1 완료 기준 충족: 로그인 없이 mock으로 전 화면 클릭 가능**
+
 ### 진행 중
-- **Phase 1: 보호자 웹 UI 전체 (mock 데이터)** — ui-builder 위임
+- 사용자 데모 확인 대기 (`localhost:3000/app`)
 
 ### 다음 할 일
-1. ui-builder 결과 → reviewer 검증 → 커밋
-2. Phase 1 완료 기준 확인: 로그인 없이 mock으로 전 화면 클릭 가능한 데모
-3. 사용자 승인 후 Phase 2 (Supabase Auth + CRUD 실데이터)
-4. ADMIN_PASSWORD(vs-beta-2026) 설문 배포 전 변경 권장
+1. 사용자 승인 후 Phase 2 (Supabase Auth magic link + guardians/seniors/schedules 테이블·RLS + mock→실데이터 교체 + RRULE 다음 발신 시각 계산) — data-api 주도
+2. 디자인 토큰 확정값 오면 globals.css 교체 (Phase 1 항목 4)
+3. ADMIN_PASSWORD(vs-beta-2026) 설문 배포 전 변경 권장
 
 ### 결정사항
 - **스택 버전 (호환성 우선, 메이저 업그레이드는 오케스트레이터 승인 필요)**:
