@@ -11,17 +11,24 @@
 ### 완료
 - `.claude/agents/` 3역할(ui-builder=opus, data-api=opus, reviewer=sonnet) 모델 배분 확정 (frontmatter)
 - CLAUDE.md에 `## 세션 운영 규칙` 섹션 추가 (모델 배분·PROGRESS.md 인수인계·버전 고정)
-- Next.js 스캐폴딩 (아래 결정사항 참조)
+- Next.js 스캐폴딩 + npm install + `npm run build` 통과
+- **Phase 0 코드 완성** (ui-builder ∥ data-api 병렬 → reviewer FAIL 1건(tsconfig target 누락, 오케스트레이터가 ES2017 추가로 해결) → 빌드 PASS):
+  - 랜딩 `/`: 히어로→문제공감→3단계→가격티저(PRICING 상수)→CTA 2개+대기자 모달, 의료조언 미제공 고지
+  - CTA 추적: session_uuid(localStorage) + utm 3종(sessionStorage) → VIEW 1회 dedup/클릭/제출
+  - `supabase/migrations/0001_cta_waitlist.sql` (RLS deny-all, 쓰기는 서버 secret key 경유 — 승인된 설계)
+  - `/api/cta`(204, VIEW 중복 23505 흡수), `/api/waitlist`(201, 이메일 중복 성공 처리), PII 로그 미포함
+  - `/admin/metrics`: ADMIN_PASSWORD 게이트(?pw= 또는 쿠키), utm_source별 VIEW→CLICK→SUBMIT 퍼널
+- `.env.local` 세팅 완료 (신형 키: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY / SUPABASE_SECRET_KEY, ADMIN_PASSWORD=vs-beta-2026)
 
 ### 진행 중
-- Phase 0: 랜딩 UI + CTA 추적 (PLAN.md 참조)
+- Phase 0 마무리: 마이그레이션 원격 적용 + 실동작 확인
 
 ### 다음 할 일
-1. npm install 완료 확인 → `npm run dev` 동작 확인
-2. ui-builder에 랜딩 페이지(`app/(marketing)/page.tsx`) 위임, data-api에 `cta_events`/`waitlist` 마이그레이션 + `/api/cta` 위임 (병렬)
-3. reviewer 검증 → 머지
-4. Supabase 마이그레이션 적용 (사용자에게 anon key 받은 후)
-5. `/admin/metrics` 퍼널 페이지, OG 태그, Vercel 배포
+1. **[사용자]** Supabase SQL Editor에서 `supabase/migrations/0001_cta_waitlist.sql` 실행
+2. `npm run dev` → 랜딩 확인, CTA 클릭→cta_events 적재, `/admin/metrics?pw=vs-beta-2026` 퍼널 확인
+3. OG 태그 추가, Vercel 배포 (env 4종 + TZ 설정, PLAN 0-6)
+4. Phase 0 완료 기준 검증: utm 다른 두 링크로 채널별 분리 집계
+5. 사용자 승인 후 Phase 1 (보호자 웹 mock UI 전체) — ui-builder 주도
 
 ### 결정사항
 - **스택 버전 (호환성 우선, 메이저 업그레이드는 오케스트레이터 승인 필요)**:
