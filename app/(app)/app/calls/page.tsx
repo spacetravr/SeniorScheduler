@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/app/PageHeader";
 import { SessionStatusBadge } from "@/components/app/StatusBadge";
+import { SampleBadge } from "@/components/app/SampleBadge";
 import { fmtDateTime } from "@/components/app/format";
 import { scheduleTypeLabel } from "@/lib/contracts/domain";
 import { callSessions, scheduleById, seniorById } from "@/lib/mock/data";
@@ -19,6 +20,7 @@ export default function CallsPage() {
       <PageHeader
         title="통화 기록"
         subtitle="부모님께 발신한 안내 전화 기록입니다."
+        action={<SampleBadge />}
       />
 
       <section className="flex flex-col gap-2">

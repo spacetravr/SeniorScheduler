@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/app/PageHeader";
 import { AdherenceStatusBadge } from "@/components/app/StatusBadge";
+import { SampleBadge } from "@/components/app/SampleBadge";
 import { fmtDate } from "@/components/app/format";
 import { MEDICAL_DISCLAIMER } from "@/lib/contracts/domain";
 import {
@@ -24,6 +25,7 @@ export default function ReportsPage() {
       <PageHeader
         title="리포트"
         subtitle="통화 결과 요약과 이행 상태입니다."
+        action={<SampleBadge />}
       />
 
       <section className="flex flex-col gap-2">
