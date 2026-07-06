@@ -1,7 +1,9 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
 /**
  * 서버 컴포넌트 / Server Action / Route Handler 용 Supabase 클라이언트 (RLS 적용).
@@ -29,7 +31,7 @@ export function createServerSupabase(): SupabaseClient {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: CookieToSet[]) {
         try {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);
