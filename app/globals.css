@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── 디자인 토큰 단일 소스 (CLAUDE.md `## 디자인 토큰`과 동기화) ──
+   placeholder — Claude Design 확정값이 오면 이 블록만 교체하면 전체 반영. */
+:root {
+  --color-primary: #2563eb;   /* TODO: Claude Design 확정값으로 교체 */
+  --color-accent: #f59e0b;
+  --color-bg: #ffffff;
+  --color-surface: #f8fafc;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --radius-base: 12px;
+  --font-sans: 'Pretendard Variable', sans-serif;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
