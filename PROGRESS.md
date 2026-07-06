@@ -58,8 +58,20 @@
 - reviewer FAIL 1건(fmtRrule 유닛 테스트 누락) → ui-builder가 format.test.ts 추가(9 테스트, 요일 정렬 버그 발견·수정) → `npm test` exit 0, 빌드 21라우트 통과
 - **Phase 1 완료 기준 충족: 로그인 없이 mock으로 전 화면 클릭 가능**
 
-### 진행 중
-- Phase 2 코드 완료·머지됨. 사용자 수동 작업(위 섹션) 후 스모크만 남음.
+### 완료 (로그인 개선 1/2 — 2026-07-06 밤)
+- **첫 실사용 피드백 2건 접수**: ① 대시보드에서 클릭 안 되는 요소들(오늘의 일정 카드 링크 없음 + mock 섹션이 고장처럼 보임) ② magic link 로그인 이상함 — dev 로그로 원인 확정: 첫 시도 `pkce_code_verifier_not_found` 실패했는데 `/login?error=expired_link` 파라미터를 로그인 페이지가 **읽지도 표시하지도 않음** (조용한 실패)
+- **결정: 이메일+비밀번호를 주 로그인으로 전환** (사용자 선택). magic link는 "비밀번호 분실 시 메일 로그인" 보조로 유지 → 별도 재설정 플로우 불필요 (로그인 후 설정에서 비밀번호 변경)
+- **데이터 계층 완료** (reviewer PASS, 머지됨): `lib/actions/auth.ts`에 `signUpWithPassword`/`signInWithPassword`/`updatePassword` 추가. zod 8~72자, 에러 한국어 매핑(`lib/actions/auth-validation.ts`, 21 유닛 테스트), PII 무로깅. guardians 자동 생성은 기존 DB 트리거가 signUp에도 적용됨(확인 완료). 총 테스트 61개.
+- ui-builder가 쓸 시그니처: `signUpWithPassword(fd: email,password,password_confirm)` → `{ok:true;message;session:boolean}|{ok:false;error}` (session=true면 즉시 /app 이동, false면 "확인 메일" 안내) / `signInWithPassword(fd: email,password)` / `updatePassword(fd: password,password_confirm)` — 모두 `AuthActionResult` 반환
+
+### 진행 중 / 다음 세션 시작점 (로그인 개선 2/2 — ui-builder 위임 대기)
+1. **ui-builder 작업 (브랜치 `feat/ui-password-login`)**:
+   - `/login` 개편: 이메일+비밀번호 폼(로그인/회원가입 전환), `signIn/signUpWithPassword` 연결, signUp `session:true`→/app 이동·false→확인 메일 안내, "비밀번호를 잊으셨나요? 메일로 로그인" 접힌 보조 폼(기존 sendMagicLink), **`?error=expired_link|invalid_link` 쿼리를 한국어 안내로 표시**("링크가 만료됐어요. 링크를 요청한 브라우저에서 열어주세요" 등)
+   - 대시보드 수정: 오늘의 일정 카드→`/app/schedules` 링크화, mock 섹션(이행률·최근 통화)은 비클릭 명확화+"실제 통화가 시작되면 채워집니다" 안내
+   - `/app/settings`에 비밀번호 변경 폼(`updatePassword` 연결)
+   - 완료 후 reviewer → 머지
+2. **사용자 수동 1개**: Supabase 대시보드 → Authentication → Sign In / Providers → Email → **"Confirm email" 토글 OFF** (베타 권장 — ON이면 가입마다 메일 2통/h 제한에 걸림. 코드가 양쪽 다 처리하므로 나중에 SMTP 연결 후 ON 전환 가능)
+3. Phase 2 스모크 재개(비밀번호 가입→피보호자→일정→대시보드) → Site URL 원복 → Vercel 배포(admin 대시보드 개편 포함)
 - **CTA 운영 정비 (2026-07-06 저녁, reviewer PASS·머지됨)**: `USER_CHECK.md` 신설(유포용 utm 링크 규칙·데이터 설명·열람 방법 — utm_source=test 규칙 포함) + `/admin/metrics` 한글 대시보드 전면 개편(요약 카드·퍼널 설명·채널 표·일별 추이·최근 활동·대기자 마스킹, test 유입 집계 제외, KST 명시, lib.test.ts 13케이스). 총 테스트 40개. **프로덕션 미배포 — Phase 2 스모크 후 함께 배포.**
 
 ### 기타 대기 항목
