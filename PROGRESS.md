@@ -20,15 +20,24 @@
   - `/admin/metrics`: ADMIN_PASSWORD 게이트(?pw= 또는 쿠키), utm_source별 VIEW→CLICK→SUBMIT 퍼널
 - `.env.local` 세팅 완료 (신형 키: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY / SUPABASE_SECRET_KEY, ADMIN_PASSWORD=vs-beta-2026)
 
+### 완료 (Phase 0 종료 — 2026-07-06)
+- 마이그레이션 원격 적용 (사용자가 SQL Editor 실행) + 로컬 스모크 8/8 통과
+- 채널별 퍼널 분리 집계 검증 (kakao vs naver) → **Phase 0 완료 기준 충족**
+- OG/트위터 메타 태그 추가
+- **Vercel 프로덕션 배포: https://voicescheduler.vercel.app** (프로젝트 voicescheduler, 팀 voice-scheduler)
+  - env 5종 등록: SUPABASE URL/PUBLISHABLE/SECRET, ADMIN_PASSWORD, NEXT_PUBLIC_SITE_URL
+  - ⚠️ `TZ`는 Vercel 예약 변수라 등록 불가 → 코드에서 항상 Asia/Seoul 명시(date-fns-tz)로 대응, Cron은 -9h 변환 (CLAUDE.md 규칙대로)
+- 프로덕션 스모크 통과 (랜딩 200/CTA 204/waitlist 201/OG 렌더), 테스트 데이터 정리 완료 (테이블 0행)
+- `lib/contracts/domain.ts` 선커밋: Senior/Schedule/CallSession/CallTurn/CallReport zod 스키마 + 상태 라벨 + MEDICAL_DISCLAIMER
+
 ### 진행 중
-- Phase 0 마무리: 마이그레이션 원격 적용 + 실동작 확인
+- **Phase 1: 보호자 웹 UI 전체 (mock 데이터)** — ui-builder 위임
 
 ### 다음 할 일
-1. **[사용자]** Supabase SQL Editor에서 `supabase/migrations/0001_cta_waitlist.sql` 실행
-2. `npm run dev` → 랜딩 확인, CTA 클릭→cta_events 적재, `/admin/metrics?pw=vs-beta-2026` 퍼널 확인
-3. OG 태그 추가, Vercel 배포 (env 4종 + TZ 설정, PLAN 0-6)
-4. Phase 0 완료 기준 검증: utm 다른 두 링크로 채널별 분리 집계
-5. 사용자 승인 후 Phase 1 (보호자 웹 mock UI 전체) — ui-builder 주도
+1. ui-builder 결과 → reviewer 검증 → 커밋
+2. Phase 1 완료 기준 확인: 로그인 없이 mock으로 전 화면 클릭 가능한 데모
+3. 사용자 승인 후 Phase 2 (Supabase Auth + CRUD 실데이터)
+4. ADMIN_PASSWORD(vs-beta-2026) 설문 배포 전 변경 권장
 
 ### 결정사항
 - **스택 버전 (호환성 우선, 메이저 업그레이드는 오케스트레이터 승인 필요)**:
