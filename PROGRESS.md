@@ -37,10 +37,10 @@
 - **Phase 1 완료 기준 충족: 로그인 없이 mock으로 전 화면 클릭 가능**
 
 ### 진행 중
-- 사용자 데모 확인 대기 (`localhost:3000/app`)
+- 없음 — Phase 1까지 전부 커밋됨(858fe41). 사용자가 데모(`localhost:3000/app`) 확인 후 다음 세션에서 Phase 2 진행하기로 함 (2026-07-06)
 
-### 다음 할 일
-1. 사용자 승인 후 Phase 2 (Supabase Auth magic link + guardians/seniors/schedules 테이블·RLS + mock→실데이터 교체 + RRULE 다음 발신 시각 계산) — data-api 주도
+### 다음 할 일 (다음 세션 시작점)
+1. **Phase 2 시작** (Supabase Auth magic link + guardians/seniors/schedules 테이블·RLS + mock→실데이터 교체 + RRULE 다음 발신 시각 계산 KST 유닛 테스트) — data-api 주도, 계약은 lib/contracts/domain.ts 기준
 2. 디자인 토큰 확정값 오면 globals.css 교체 (Phase 1 항목 4)
 3. ADMIN_PASSWORD(vs-beta-2026) 설문 배포 전 변경 권장
 
