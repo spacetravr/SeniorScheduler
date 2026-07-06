@@ -1,12 +1,17 @@
 "use client";
 
 /**
- * 일정 등록 폼 (mock) — 유형/제목/안내문구 템플릿/발신시각/반복/피보호자.
- * 반복 선택 → RRULE 문자열로 "표시만". 제출 시 콘솔 로그 + 성공 메시지.
+ * 일정 등록/수정 폼 — createSchedule/updateSchedule(Server Action) 결합.
+ * 반복 선택지는 데이터 계층이 지원하는 두 형태만 생성한다:
+ *   - 매일        → "FREQ=DAILY"
+ *   - 주중/요일선택 → "FREQ=WEEKLY;BYDAY=..."
+ * 신규 등록은 항상 비활성(active=false)으로 만들고, 발신 ON 은 목록 토글에서 처리한다
+ * (미동의 피보호자 활성화 에러를 등록 흐름에서 분리).
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { SCHEDULE_TYPES, scheduleTypeLabel } from "@/lib/contracts/domain";
-import type { Senior } from "@/lib/contracts/domain";
+import type { Schedule, Senior } from "@/lib/contracts/domain";
+import { createSchedule, updateSchedule } from "@/lib/actions/schedules";
 
 const WEEKDAYS = [
   { code: "MO", label: "월" },
@@ -20,21 +25,38 @@ const WEEKDAYS = [
 
 type Repeat = "DAILY" | "WEEKDAY" | "CUSTOM";
 
+const WEEKDAY_CODES = ["MO", "TU", "WE", "TH", "FR"];
+
 const SCRIPT_PLACEHOLDER =
   "예: 어머니, 아침 혈압약 드실 시간이에요. 챙겨 드셨나요?";
 
-export function ScheduleForm({ seniors }: { seniors: Senior[] }) {
-  const [repeat, setRepeat] = useState<Repeat>("DAILY");
-  const [days, setDays] = useState<string[]>(["MO"]);
-  const [done, setDone] = useState(false);
+/** 기존 rrule → 폼 초기 상태(repeat/days). */
+function parseRrule(rrule: string | undefined): { repeat: Repeat; days: string[] } {
+  if (!rrule || rrule.includes("FREQ=DAILY")) return { repeat: "DAILY", days: ["MO"] };
+  const byday = rrule.match(/BYDAY=([A-Z,]+)/)?.[1];
+  const days = byday ? byday.split(",") : ["MO"];
+  const isWeekday =
+    days.length === 5 && WEEKDAY_CODES.every((d) => days.includes(d));
+  return { repeat: isWeekday ? "WEEKDAY" : "CUSTOM", days };
+}
+
+type Props =
+  | { mode: "create"; seniors: Senior[]; onDone?: () => void; schedule?: undefined }
+  | { mode: "edit"; schedule: Schedule; seniors: Senior[]; onDone?: () => void };
+
+export function ScheduleForm(props: Props) {
+  const isEdit = props.mode === "edit";
+  const initial = parseRrule(props.schedule?.rrule);
+  const [repeat, setRepeat] = useState<Repeat>(initial.repeat);
+  const [days, setDays] = useState<string[]>(initial.days);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
   const rrule = useMemo(() => {
     if (repeat === "DAILY") return "FREQ=DAILY";
     if (repeat === "WEEKDAY") return "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR";
-    const ordered = WEEKDAYS.filter((d) => days.includes(d.code)).map(
-      (d) => d.code,
-    );
-    return ordered.length ? `FREQ=WEEKLY;BYDAY=${ordered.join(",")}` : "FREQ=WEEKLY";
+    const ordered = WEEKDAYS.filter((d) => days.includes(d.code)).map((d) => d.code);
+    return ordered.length ? `FREQ=WEEKLY;BYDAY=${ordered.join(",")}` : "";
   }, [repeat, days]);
 
   function toggleDay(code: string) {
@@ -46,31 +68,66 @@ export function ScheduleForm({ seniors }: { seniors: Senior[] }) {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
-    const data = Object.fromEntries(new FormData(form).entries());
-    console.log("[mock] 일정 등록", { ...data, rrule });
-    setDone(true);
-    form.reset();
-    setRepeat("DAILY");
-    setDays(["MO"]);
+    const fd = new FormData(form);
+    setError(null);
+
+    if (!rrule) {
+      setError("반복할 요일을 하나 이상 선택해 주세요.");
+      return;
+    }
+
+    const base = {
+      senior_id: String(fd.get("senior_id") ?? ""),
+      type: String(fd.get("type") ?? "MEDICATION"),
+      title: String(fd.get("title") ?? "").trim(),
+      script_template: String(fd.get("script_template") ?? "").trim(),
+      call_time: String(fd.get("call_time") ?? ""),
+      rrule,
+    };
+
+    startTransition(async () => {
+      const result = isEdit
+        ? await updateSchedule({
+            id: props.schedule.id,
+            ...base,
+            active: props.schedule.active,
+          })
+        : await createSchedule({ ...base, active: false });
+      if (result.ok) {
+        if (!isEdit) {
+          form.reset();
+          setRepeat("DAILY");
+          setDays(["MO"]);
+        }
+        props.onDone?.();
+      } else {
+        setError(result.error);
+      }
+    });
   }
+
+  const s = props.schedule;
 
   return (
     <form
       onSubmit={handleSubmit}
       className="flex flex-col gap-4 rounded-base border border-surface p-5"
     >
-      <h2 className="text-base font-semibold">새 일정 등록</h2>
+      <h2 className="text-base font-semibold">
+        {isEdit ? "일정 수정" : "새 일정 등록"}
+      </h2>
 
       <label className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">피보호자</span>
         <select
           name="senior_id"
           required
+          defaultValue={s?.senior_id ?? props.seniors[0]?.id}
           className="rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
         >
-          {seniors.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name} ({s.relationship})
+          {props.seniors.map((sr) => (
+            <option key={sr.id} value={sr.id}>
+              {sr.name} ({sr.relationship})
             </option>
           ))}
         </select>
@@ -82,7 +139,7 @@ export function ScheduleForm({ seniors }: { seniors: Senior[] }) {
           <select
             name="type"
             required
-            defaultValue="MEDICATION"
+            defaultValue={s?.type ?? "MEDICATION"}
             className="rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
           >
             {SCHEDULE_TYPES.map((t) => (
@@ -98,7 +155,7 @@ export function ScheduleForm({ seniors }: { seniors: Senior[] }) {
             name="call_time"
             type="time"
             required
-            defaultValue="09:00"
+            defaultValue={s?.call_time ?? "09:00"}
             className="rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
           />
         </label>
@@ -110,6 +167,7 @@ export function ScheduleForm({ seniors }: { seniors: Senior[] }) {
           name="title"
           required
           maxLength={100}
+          defaultValue={s?.title}
           placeholder="예: 아침 혈압약"
           className="rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
         />
@@ -122,6 +180,7 @@ export function ScheduleForm({ seniors }: { seniors: Senior[] }) {
           required
           maxLength={300}
           rows={3}
+          defaultValue={s?.script_template}
           placeholder={SCRIPT_PLACEHOLDER}
           className="resize-none rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
         />
@@ -170,21 +229,38 @@ export function ScheduleForm({ seniors }: { seniors: Senior[] }) {
             ))}
           </div>
         ) : null}
-        <p className="text-xs text-text-muted">
-          반복 규칙(RRULE): <span className="font-mono">{rrule}</span>
-        </p>
       </div>
 
-      <button
-        type="submit"
-        className="rounded-base bg-primary px-4 py-3 font-semibold text-bg"
-      >
-        일정 등록
-      </button>
+      {!isEdit ? (
+        <p className="text-xs leading-relaxed text-text-muted">
+          등록 후에는 발신이 꺼진 상태예요. 목록에서 발신을 켜면 예약 시간에 전화가
+          걸립니다. (동의 완료된 피보호자만 켤 수 있어요)
+        </p>
+      ) : null}
 
-      {done ? (
-        <p className="rounded-base bg-surface px-4 py-3 text-center text-sm font-medium text-primary">
-          일정이 등록되었습니다. (데모 — 실제 저장은 다음 단계에서 연결됩니다)
+      <div className="flex gap-2">
+        {isEdit ? (
+          <button
+            type="button"
+            onClick={() => props.onDone?.()}
+            disabled={pending}
+            className="flex-1 rounded-base border border-surface px-4 py-3 font-semibold text-text-muted disabled:opacity-50"
+          >
+            취소
+          </button>
+        ) : null}
+        <button
+          type="submit"
+          disabled={pending}
+          className="flex-1 rounded-base bg-primary px-4 py-3 font-semibold text-bg disabled:opacity-50"
+        >
+          {pending ? "저장 중…" : isEdit ? "수정 저장" : "일정 등록"}
+        </button>
+      </div>
+
+      {error ? (
+        <p className="rounded-base bg-surface px-4 py-3 text-center text-sm font-medium text-accent">
+          {error}
         </p>
       ) : null}
     </form>

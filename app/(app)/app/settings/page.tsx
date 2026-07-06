@@ -1,12 +1,20 @@
 /**
- * 설정 (/app/settings) — 계정 이메일(mock), 알림 설정 placeholder, 로그아웃(동작 없음).
+ * 설정 (/app/settings) — 로그인 이메일 표시 + 로그아웃(실동작). 알림 설정은 준비 중(placeholder).
  */
 import { PageHeader } from "@/components/app/PageHeader";
 import { NotifyToggle } from "@/components/app/NotifyToggle";
+import { LogoutButton } from "@/components/app/LogoutButton";
+import { createServerSupabase } from "@/lib/supabase/server";
 
-const MOCK_EMAIL = "guardian@example.com";
+export const dynamic = "force-dynamic";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const supabase = createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const email = user?.email ?? "-";
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="설정" subtitle="계정과 알림을 관리합니다." />
@@ -16,7 +24,7 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between gap-4 rounded-base border border-surface p-4">
           <div className="flex flex-col gap-0.5">
             <span className="text-sm text-text-muted">로그인 이메일</span>
-            <span className="font-medium">{MOCK_EMAIL}</span>
+            <span className="font-medium">{email}</span>
           </div>
         </div>
       </section>
@@ -33,12 +41,7 @@ export default function SettingsPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold">기타</h2>
-        <button
-          type="button"
-          className="rounded-base border border-surface px-4 py-3 text-sm font-semibold text-text-muted"
-        >
-          로그아웃
-        </button>
+        <LogoutButton />
       </section>
     </div>
   );

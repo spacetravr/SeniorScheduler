@@ -1,12 +1,17 @@
 /**
- * 피보호자 (/app/seniors) — 목록 + 등록 폼(동의 체크박스 필수).
+ * 피보호자 (/app/seniors) — 실데이터 목록 + 등록/수정/삭제/동의 (server actions 결합).
  */
 import { PageHeader } from "@/components/app/PageHeader";
 import { SeniorForm } from "@/components/app/SeniorForm";
-import { seniors } from "@/lib/mock/data";
-import { fmtDate } from "@/components/app/format";
+import { SeniorItem } from "@/components/app/SeniorItem";
+import { EmptyState } from "@/components/app/EmptyState";
+import { getSeniors } from "@/lib/db/queries";
 
-export default function SeniorsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SeniorsPage() {
+  const seniors = await getSeniors();
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
@@ -14,41 +19,21 @@ export default function SeniorsPage() {
         subtitle="부모님을 등록하고 동의 상태를 관리합니다."
       />
 
-      <section className="flex flex-col gap-2">
-        {seniors.map((s) => {
-          const consented = Boolean(s.consent_at);
-          return (
-            <div
-              key={s.id}
-              className="flex items-center justify-between gap-4 rounded-base border border-surface p-4"
-            >
-              <div className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{s.name}</span>
-                  <span className="text-sm text-text-muted">
-                    {s.relationship}
-                    {s.birth_year ? ` · ${s.birth_year}년생` : ""}
-                  </span>
-                </div>
-                <span className="text-sm text-text-muted tabular-nums">
-                  {s.phone}
-                </span>
-              </div>
-              {consented ? (
-                <span className="inline-flex items-center rounded-base bg-primary px-2.5 py-1 text-xs font-semibold text-bg">
-                  동의 완료 · {fmtDate(s.consent_at!)}
-                </span>
-              ) : (
-                <span className="inline-flex items-center rounded-base border border-accent px-2.5 py-1 text-xs font-semibold text-accent">
-                  동의 대기
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </section>
+      {seniors.length === 0 ? (
+        <EmptyState
+          icon="👵"
+          title="아직 등록된 피보호자가 없어요"
+          description="부모님을 먼저 등록하고 통화 동의를 완료하면, 안내 전화 일정을 만들 수 있어요."
+        />
+      ) : (
+        <section className="flex flex-col gap-2">
+          {seniors.map((s) => (
+            <SeniorItem key={s.id} senior={s} />
+          ))}
+        </section>
+      )}
 
-      <SeniorForm />
+      <SeniorForm mode="create" />
     </div>
   );
 }
