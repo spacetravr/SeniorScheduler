@@ -76,9 +76,10 @@ export default async function DashboardPage() {
         ) : (
           <div className="flex flex-col gap-2">
             {instances.map((inst) => (
-              <div
+              <Link
                 key={inst.schedule.id}
-                className="flex items-center gap-4 rounded-base border border-surface p-4"
+                href="/app/schedules"
+                className="flex items-center gap-4 rounded-base border border-surface p-4 transition-colors hover:border-primary"
               >
                 <span className="w-14 shrink-0 text-lg font-bold tabular-nums">
                   {fmtTime(inst.scheduled_at)}
@@ -90,7 +91,7 @@ export default async function DashboardPage() {
                   </span>
                 </div>
                 <SessionStatusBadge status="SCHEDULED" />
-              </div>
+              </Link>
             ))}
           </div>
         )}
@@ -125,6 +126,9 @@ export default async function DashboardPage() {
             </div>
           ))}
         </div>
+        <p className="mt-4 text-xs leading-relaxed text-text-muted">
+          실제 통화가 시작되면 채워집니다.
+        </p>
       </section>
 
       {/* 최근 통화 결과 (mock) */}
@@ -134,9 +138,6 @@ export default async function DashboardPage() {
             <h2 className="text-base font-semibold">최근 통화 결과</h2>
             <SampleBadge />
           </div>
-          <Link href="/app/reports" className="text-sm font-medium text-primary">
-            전체 리포트
-          </Link>
         </div>
         <div className="flex flex-col gap-2">
           {recentReports.map((r) => {
@@ -146,9 +147,8 @@ export default async function DashboardPage() {
               ? scheduleById(session.schedule_id)
               : undefined;
             return (
-              <Link
+              <div
                 key={r.id}
-                href="/app/reports"
                 className="flex flex-col gap-2 rounded-base border border-surface p-4"
               >
                 <div className="flex items-center justify-between gap-3">
@@ -160,10 +160,13 @@ export default async function DashboardPage() {
                 <p className="line-clamp-2 text-sm leading-relaxed">
                   {r.summary}
                 </p>
-              </Link>
+              </div>
             );
           })}
         </div>
+        <p className="text-xs leading-relaxed text-text-muted">
+          실제 통화가 시작되면 채워집니다.
+        </p>
       </section>
     </div>
   );
