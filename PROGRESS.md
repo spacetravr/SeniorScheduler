@@ -64,14 +64,17 @@
 - **데이터 계층 완료** (reviewer PASS, 머지됨): `lib/actions/auth.ts`에 `signUpWithPassword`/`signInWithPassword`/`updatePassword` 추가. zod 8~72자, 에러 한국어 매핑(`lib/actions/auth-validation.ts`, 21 유닛 테스트), PII 무로깅. guardians 자동 생성은 기존 DB 트리거가 signUp에도 적용됨(확인 완료). 총 테스트 61개.
 - ui-builder가 쓸 시그니처: `signUpWithPassword(fd: email,password,password_confirm)` → `{ok:true;message;session:boolean}|{ok:false;error}` (session=true면 즉시 /app 이동, false면 "확인 메일" 안내) / `signInWithPassword(fd: email,password)` / `updatePassword(fd: password,password_confirm)` — 모두 `AuthActionResult` 반환
 
-### 진행 중 / 다음 세션 시작점 (로그인 개선 2/2 — ui-builder 위임 대기)
-1. **ui-builder 작업 (브랜치 `feat/ui-password-login`)**:
-   - `/login` 개편: 이메일+비밀번호 폼(로그인/회원가입 전환), `signIn/signUpWithPassword` 연결, signUp `session:true`→/app 이동·false→확인 메일 안내, "비밀번호를 잊으셨나요? 메일로 로그인" 접힌 보조 폼(기존 sendMagicLink), **`?error=expired_link|invalid_link` 쿼리를 한국어 안내로 표시**("링크가 만료됐어요. 링크를 요청한 브라우저에서 열어주세요" 등)
-   - 대시보드 수정: 오늘의 일정 카드→`/app/schedules` 링크화, mock 섹션(이행률·최근 통화)은 비클릭 명확화+"실제 통화가 시작되면 채워집니다" 안내
-   - `/app/settings`에 비밀번호 변경 폼(`updatePassword` 연결)
-   - 완료 후 reviewer → 머지
-2. **사용자 수동 1개**: Supabase 대시보드 → Authentication → Sign In / Providers → Email → **"Confirm email" 토글 OFF** (베타 권장 — ON이면 가입마다 메일 2통/h 제한에 걸림. 코드가 양쪽 다 처리하므로 나중에 SMTP 연결 후 ON 전환 가능)
-3. Phase 2 스모크 재개(비밀번호 가입→피보호자→일정→대시보드) → Site URL 원복 → Vercel 배포(admin 대시보드 개편 포함)
+### 완료 (로그인 개선 2/2 — 2026-07-07, reviewer PASS·머지됨)
+- ui-builder(`feat/ui-password-login`, 커밋 3개) → reviewer PASS → main 머지, 머지 후 `npm test` 65/65:
+  - `/login` 개편: 이메일+비밀번호 로그인/회원가입 탭 전환 폼, signUp `session:true`→/app·false→확인 메일 안내, "비밀번호를 잊으셨나요? 메일로 로그인" 접힌 보조 폼(sendMagicLink), **`?error=expired_link|invalid_link|기타` 한국어 경고 배너**(`components/app/login-messages.ts` 순수 함수 + 테스트 4개, XSS 없음 — 고정 문자열만 렌더)
+  - 대시보드: 오늘의 일정 카드→`/app/schedules` 링크화, mock 섹션(이행률·최근 통화) 비클릭 명확화+"실제 통화가 시작되면 채워집니다"
+  - `/app/settings`: 비밀번호 변경/최초 설정 폼(`updatePassword`)
+  - 접근성: role=alert/status, 탭 aria-selected, 제출 중 disabled
+- reviewer non-blocking 메모: 이모지(📬)는 디자인 확정 시 아이콘으로 교체 검토 / login page searchParams 타입이 배열 케이스(`?error=a&error=b`) 미고려(실사용 영향 미미)
+
+### 진행 중 / 다음 세션 시작점
+1. **사용자 수동 1개**: Supabase 대시보드 → Authentication → Sign In / Providers → Email → **"Confirm email" 토글 OFF** (베타 권장 — ON이면 가입마다 메일 2통/h 제한에 걸림. 코드가 양쪽 다 처리하므로 나중에 SMTP 연결 후 ON 전환 가능)
+2. Phase 2 스모크 재개(비밀번호 가입→피보호자→일정→대시보드) → Site URL 원복(`https://voicescheduler.vercel.app`) → Vercel 배포(admin 대시보드 개편 + 비밀번호 로그인 포함)
 - **CTA 운영 정비 (2026-07-06 저녁, reviewer PASS·머지됨)**: `USER_CHECK.md` 신설(유포용 utm 링크 규칙·데이터 설명·열람 방법 — utm_source=test 규칙 포함) + `/admin/metrics` 한글 대시보드 전면 개편(요약 카드·퍼널 설명·채널 표·일별 추이·최근 활동·대기자 마스킹, test 유입 집계 제외, KST 명시, lib.test.ts 13케이스). 총 테스트 40개. **프로덕션 미배포 — Phase 2 스모크 후 함께 배포.**
 
 ### 기타 대기 항목
