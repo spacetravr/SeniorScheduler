@@ -72,9 +72,17 @@
   - 접근성: role=alert/status, 탭 aria-selected, 제출 중 disabled
 - reviewer non-blocking 메모: 이모지(📬)는 디자인 확정 시 아이콘으로 교체 검토 / login page searchParams 타입이 배열 케이스(`?error=a&error=b`) 미고려(실사용 영향 미미)
 
-### 진행 중 / 다음 세션 시작점
-1. **사용자 수동 1개**: Supabase 대시보드 → Authentication → Sign In / Providers → Email → **"Confirm email" 토글 OFF** (베타 권장 — ON이면 가입마다 메일 2통/h 제한에 걸림. 코드가 양쪽 다 처리하므로 나중에 SMTP 연결 후 ON 전환 가능)
-2. Phase 2 스모크 재개(비밀번호 가입→피보호자→일정→대시보드) → Site URL 원복(`https://voicescheduler.vercel.app`) → Vercel 배포(admin 대시보드 개편 + 비밀번호 로그인 포함)
+### 진행 중 (Phase 2 스모크 — 2026-07-07~08)
+- **사용자 계정에 임시 비밀번호 설정 완료** (오케스트레이터가 admin API로): spacetr17@khu.ac.kr / `ansim-beta-0707` — API 로그인 검증 통과. 사용자는 로그인 후 설정에서 변경 권장
+- 로컬 스모크 진행 중: 로그인→대시보드→일정 이동까지 확인됨. **피보호자 등록(동의)→일정 등록→토글 ON→대시보드 오늘 인스턴스 표시**는 사용자 확인 대기 → 완료 시 Phase 2 완료 판정
+- ⚠️ **Windows dev 서버 이슈 1회**: `.next` 캐시 파일 깨짐(errno -4094)으로 전 요청 실패 → `.next` 삭제+재시작으로 복구. 재발 시 동일 조치, 반복되면 백신 예외 등록 검토
+- 이번에 클릭해보며 나온 개선 요청은 이 파일에 추가 기록할 것
+
+### 다음 할 일
+1. **사용자 수동 1개 (미확인)**: Supabase 대시보드 → Authentication → Sign In / Providers → Email → **"Confirm email" 토글 OFF** (베타 권장 — ON이면 가입마다 메일 2통/h 제한. 코드가 양쪽 다 처리하므로 나중에 SMTP 연결 후 ON 전환 가능). ※ 기존 계정 임시 비밀번호로 로그인은 이 토글과 무관하게 가능
+2. 스모크 통과 확인 → Site URL 원복(`https://voicescheduler.vercel.app`) → **Vercel 배포** (admin 대시보드 개편 + 비밀번호 로그인 — 프로덕션은 아직 구버전)
+3. **Phase 3 진입 (배포 후)**: 벤더 비교(국내 CPaaS vs CLOVA AiCall, PLAN 3-0 — 사용자 결정 필요)와 무관하게 MockAdapter로 파이프라인(발신 스케줄러→call_sessions 상태 기계→LLM 분류·리포트→calls/reports 화면 실연결) 선개발 가능
+4. 디자인은 토큰 교체만으로 전체 반영되는 구조 확인 — 확정값 대기, 기능 개발 블로킹 아님
 - **CTA 운영 정비 (2026-07-06 저녁, reviewer PASS·머지됨)**: `USER_CHECK.md` 신설(유포용 utm 링크 규칙·데이터 설명·열람 방법 — utm_source=test 규칙 포함) + `/admin/metrics` 한글 대시보드 전면 개편(요약 카드·퍼널 설명·채널 표·일별 추이·최근 활동·대기자 마스킹, test 유입 집계 제외, KST 명시, lib.test.ts 13케이스). 총 테스트 40개. **프로덕션 미배포 — Phase 2 스모크 후 함께 배포.**
 
 ### 기타 대기 항목
