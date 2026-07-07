@@ -4,6 +4,7 @@
 import { PageHeader } from "@/components/app/PageHeader";
 import { NotifyToggle } from "@/components/app/NotifyToggle";
 import { LogoutButton } from "@/components/app/LogoutButton";
+import { PasswordChangeForm } from "@/components/app/PasswordChangeForm";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,13 @@ export default async function SettingsPage() {
             <span className="text-sm text-text-muted">로그인 이메일</span>
             <span className="font-medium">{email}</span>
           </div>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold">비밀번호</h2>
+        <div className="rounded-base border border-surface p-4">
+          <PasswordChangeForm />
         </div>
       </section>
 
