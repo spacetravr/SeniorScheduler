@@ -6,6 +6,31 @@
 
 ---
 
+## 2026-07-10 — 세션 #2: 배포·환경 정비 (Confirm email OFF / GitHub / 알약 원인 확정 / Vercel 최신화)
+
+### 완료
+- **Supabase "Confirm email" OFF** — 사용자 대시보드 조작 + API로 `mailer_autoconfirm: true` 반영 검증. 가입 즉시 로그인 가능
+- **GitHub 원격 신설·푸시**: https://github.com/spacetravr/SeniorScheduler (main, 히스토리 포함). 팀원은 Settings → Collaborators로 초대, clone 후 `.env.example` → `.env.local` 채워 실행
+- **dev 서버 끊김(errno -4094) 원인 확정**: 알약(ALYac) 실시간 감시가 `.next` 파일 잠금 (Defender 비활성 확인). 사용자가 알약 검사 예외에 프로젝트 폴더 등록 → 이후 전 라우트 재현 테스트에서 재발 없음
+- **Vercel 프로덕션 최신화** (`vercel --prod`, 커밋 40d915f): 비밀번호 로그인 + admin 대시보드 개편 반영. 라우트 스모크 통과(/ 200, /login 200, /app 307, /admin/metrics 200, 랜딩 0.22s). Vercel CLI 55 전역 설치·로그인(spacetravr) 완료
+- 속도 저하 원인 진단: ① dev 첫 방문 컴파일(배포판 무관) ② **Supabase 리전이 ap-southeast-2(시드니)** — 한국에서 인증·쿼리 호출당 ~0.3s 실측
+
+### 다음 할 일
+1. **Phase 2 스모크 잔여** (실서버 https://voicescheduler.vercel.app/login 로 해도 됨): 피보호자 등록(동의) → 일정 등록 → 토글 ON → 대시보드 오늘 인스턴스 → 통과 시 Phase 2 완료 판정
+2. **사용자 수동**: Supabase → Authentication → URL Configuration → Site URL을 `https://voicescheduler.vercel.app`으로 원복 (magic link 보조 로그인 메일용. 비밀번호 주 로그인은 무관)
+3. **서울 리전 이사 (권장, 결정됨 — 착수 대기)**: 사용자가 서울(Northeast Asia) 리전 새 프로젝트 생성(무료 2개 한도 내) → publishable/secret 키 전달 → 오케스트레이터가 마이그레이션 0001·0002 안내, `.env.local`·Vercel env 교체, 계정 재생성, 재배포, 검증. 완료 후 시드니 프로젝트 삭제
+4. 미들웨어 개선(data 경계 — data-api 경유): 현재 matcher가 랜딩 `/` 포함 전 경로에서 `getUser()` 원격 호출 → 보호 경로 위주로 축소해 랜딩·로그인 응답 개선
+5. Phase 3 진입 (MockAdapter 파이프라인 선개발 — 벤더 결정과 무관)
+
+### 결정사항
+- **Supabase 서울 리전 이사 확정** (시기: 데이터 쌓이기 전 조기 실행). 무료 플랜 프로젝트 2개 한도 내 병행 후 시드니 삭제
+- Vercel CLI 55 전역 설치 (배포는 `vercel --prod`, 프로젝트 링크 `.vercel/project.json` 존재)
+
+### 블로커
+- 없음 (서울 이사는 사용자 프로젝트 생성 대기)
+
+---
+
 ## 2026-07-06 — 세션 #1: 프로젝트 초기화 + Phase 0 착수
 
 ### 완료
