@@ -6,8 +6,6 @@ type Status = "form" | "submitting" | "done" | "error";
 
 interface WaitlistModalProps {
   open: boolean;
-  /** 어떤 CTA 로 열렸는지 (헤드라인 문구 분기용). */
-  intent: "subscribe" | "try" | null;
   onClose: () => void;
   /** 성공 시 true 반환. */
   onSubmit: (email: string) => Promise<boolean>;
@@ -17,7 +15,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function WaitlistModal({
   open,
-  intent,
   onClose,
   onSubmit,
 }: WaitlistModalProps) {
@@ -60,11 +57,6 @@ export function WaitlistModal({
     setStatus(ok ? "done" : "error");
   };
 
-  const heading =
-    intent === "subscribe"
-      ? "출시 소식을 가장 먼저 받아보세요"
-      : "베타 사용 신청하기";
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-text/40 p-0 sm:items-center sm:p-4"
@@ -83,11 +75,10 @@ export function WaitlistModal({
               ✓
             </div>
             <h2 id="waitlist-title" className="text-lg font-bold">
-              신청이 완료되었습니다
+              사전등록이 완료됐어요
             </h2>
             <p className="text-sm text-text-muted">
-              준비가 되는 대로 입력하신 이메일로 안내드리겠습니다. 소중한 관심에
-              감사드립니다.
+              오픈 소식으로 가장 먼저 찾아뵐게요. 소중한 관심에 감사드립니다.
             </p>
             <button
               type="button"
@@ -101,7 +92,7 @@ export function WaitlistModal({
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex items-start justify-between gap-2">
               <h2 id="waitlist-title" className="text-lg font-bold">
-                {heading}
+                사전등록하기
               </h2>
               <button
                 type="button"
@@ -113,7 +104,7 @@ export function WaitlistModal({
               </button>
             </div>
             <p className="text-sm text-text-muted">
-              이메일만 남겨주시면 준비되는 대로 안내드리겠습니다.
+              이메일을 남겨주시면 베타 오픈 소식을 가장 먼저 알려드릴게요.
             </p>
             <div className="flex flex-col gap-1">
               <label htmlFor="waitlist-email" className="sr-only">
@@ -147,7 +138,7 @@ export function WaitlistModal({
               disabled={status === "submitting"}
               className="w-full rounded-base bg-primary px-4 py-3 font-semibold text-bg disabled:opacity-60"
             >
-              {status === "submitting" ? "신청 중..." : "신청하기"}
+              {status === "submitting" ? "등록 중..." : "사전등록하기"}
             </button>
             <p className="text-center text-xs text-text-muted">
               입력하신 이메일은 서비스 안내 목적으로만 사용됩니다.

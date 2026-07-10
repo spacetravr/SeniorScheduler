@@ -1,6 +1,6 @@
 /**
  * 랜딩 페이지 (PLAN.md Phase 0-3, 0-4)
- * 히어로 → 문제 공감 → 작동 3단계 → 가격 티저 → CTA 2개 + 대기자 모달.
+ * 히어로 → 문제 공감 → 작동 3단계 → 가격 티저 → 사전등록 CTA + 이메일 수집 모달.
  * 대부분 서버 컴포넌트, 인터랙션·추적은 CtaSection(클라이언트)에 위임.
  */
 import { CtaSection } from "@/components/marketing/CtaSection";
