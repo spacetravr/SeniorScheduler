@@ -79,7 +79,7 @@
 - 이번에 클릭해보며 나온 개선 요청은 이 파일에 추가 기록할 것
 
 ### 다음 할 일
-1. **사용자 수동 1개 (미확인)**: Supabase 대시보드 → Authentication → Sign In / Providers → Email → **"Confirm email" 토글 OFF** (베타 권장 — ON이면 가입마다 메일 2통/h 제한. 코드가 양쪽 다 처리하므로 나중에 SMTP 연결 후 ON 전환 가능). ※ 기존 계정 임시 비밀번호로 로그인은 이 토글과 무관하게 가능
+1. ~~Supabase "Confirm email" 토글 OFF~~ ✅ 완료 (2026-07-10, 사용자 수동 → API로 `mailer_autoconfirm: true` 반영 확인. 나중에 SMTP 연결 후 ON 전환 가능)
 2. 스모크 통과 확인 → Site URL 원복(`https://voicescheduler.vercel.app`) → **Vercel 배포** (admin 대시보드 개편 + 비밀번호 로그인 — 프로덕션은 아직 구버전)
 3. **Phase 3 진입 (배포 후)**: 벤더 비교(국내 CPaaS vs CLOVA AiCall, PLAN 3-0 — 사용자 결정 필요)와 무관하게 MockAdapter로 파이프라인(발신 스케줄러→call_sessions 상태 기계→LLM 분류·리포트→calls/reports 화면 실연결) 선개발 가능
 4. 디자인은 토큰 교체만으로 전체 반영되는 구조 확인 — 확정값 대기, 기능 개발 블로킹 아님
