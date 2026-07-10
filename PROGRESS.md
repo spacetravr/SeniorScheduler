@@ -15,6 +15,9 @@
   - 리포트 미리보기 섹션 신설: 목업 카드 2개("예시 화면입니다" 라벨), '확인이 필요해요' UNCERTAIN 정직성 포인트 포함
   - 가드레일 준수: 토큰 클래스만 사용, 베타 범위 밖 기능(장기 기억·긴급 알림·실시간 대화) 문구 없음, 의료 미제공 고지 유지
 - 랜딩 활용 방향 합의: 설문지에는 utm 링크(`?utm_source=survey` 등, USER_CHECK.md 규칙)로 랜딩 연결 → 사전등록(waitlist) 전환으로 사용 의향 측정
+- **CTA 단일화** (사용자 결정: 최소형. ui-builder `feat/ui-single-cta` → reviewer PASS → 머지 382b949): [구독하기]/[베타 사용해보기] 2버튼 → **[사전등록하기] 단일 버튼 + 이메일 모달**. 추적은 기존 `CLICK_TRY` 재사용(API/DB/enum/admin 무변경), `CLICK_SUBSCRIBE`는 더 이상 발생 안 함(기존 수집분 보존). 지불 의향 측정은 설문지가 담당
+  - 후속 검토 항목: admin/metrics의 CLICK_SUBSCRIBE 컬럼·라벨 정리(0 고정될 예정), contracts enum의 죽은 값 정리 여부
+- **Vercel 프로덕션 배포 2회** (`vercel --prod`): 랜딩 보강분 + CTA 단일화분. https://voicescheduler.vercel.app 공개 확인(외부 공유용). 친구 등 테스트 유입은 `?utm_source=test` 링크 안내
 
 ### 다음 할 일
 1. GitHub push + Vercel 프로덕션 배포 (사용자 확인 후)
