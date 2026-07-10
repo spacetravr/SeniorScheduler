@@ -18,6 +18,9 @@
 - **CTA 단일화** (사용자 결정: 최소형. ui-builder `feat/ui-single-cta` → reviewer PASS → 머지 382b949): [구독하기]/[베타 사용해보기] 2버튼 → **[사전등록하기] 단일 버튼 + 이메일 모달**. 추적은 기존 `CLICK_TRY` 재사용(API/DB/enum/admin 무변경), `CLICK_SUBSCRIBE`는 더 이상 발생 안 함(기존 수집분 보존). 지불 의향 측정은 설문지가 담당
   - 후속 검토 항목: admin/metrics의 CLICK_SUBSCRIBE 컬럼·라벨 정리(0 고정될 예정), contracts enum의 죽은 값 정리 여부
 - **Vercel 프로덕션 배포 2회** (`vercel --prod`): 랜딩 보강분 + CTA 단일화분. https://voicescheduler.vercel.app 공개 확인(외부 공유용). 친구 등 테스트 유입은 `?utm_source=test` 링크 안내
+- **사용자 피드백 4건 반영** (ui-builder `feat/ui-landing-feedback` → reviewer PASS → 머지 7ffbf59): ① 히어로 설명 화살표+체크 불렛화 ② "기존 앱 vs 이 서비스" 비교 → 보호자/시니어 관점 병렬 카드로 재구성 ③ 리포트 목업 앱 UI화(상태 뱃지+통화 요약 블록) ④ '확인이 필요해요' 카드 → "대화 내용 그대로 확인"+채팅형 전사 스니펫
+  - ⚠️ 사용자가 "대화를 직접 **들을 수** 있는 기능"을 요청했으나 **녹음 미저장 정책(전사만)** 충돌로 "그대로 읽어 볼 수 있어요"로 조정해 반영 — 음성 청취를 원하면 녹음 저장 정책 변경 결정 필요(사용자에게 고지함)
+  - 메모: UNCERTAIN 정직성 카드("억지로 판정 안 함")는 사용자 요청으로 랜딩에서 제거됨 (제품 동작은 불변)
 
 ### 다음 할 일
 1. GitHub push + Vercel 프로덕션 배포 (사용자 확인 후)
