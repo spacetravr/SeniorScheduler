@@ -80,7 +80,7 @@
 
 ### 다음 할 일
 1. ~~Supabase "Confirm email" 토글 OFF~~ ✅ 완료 (2026-07-10, 사용자 수동 → API로 `mailer_autoconfirm: true` 반영 확인. 나중에 SMTP 연결 후 ON 전환 가능)
-2. 스모크 통과 확인 → Site URL 원복(`https://voicescheduler.vercel.app`) → **Vercel 배포** (admin 대시보드 개편 + 비밀번호 로그인 — 프로덕션은 아직 구버전)
+2. ~~Vercel 배포~~ ✅ 완료 (2026-07-10, `vercel --prod` → https://voicescheduler.vercel.app 최신화, 라우트 스모크 200/307 통과). ⚠️ 잔여: Supabase Site URL 아직 localhost — magic link 보조 로그인용으로 `https://voicescheduler.vercel.app` 원복 필요(사용자). GitHub 신규 원격: https://github.com/spacetravr/SeniorScheduler (main push 완료)
 3. **Phase 3 진입 (배포 후)**: 벤더 비교(국내 CPaaS vs CLOVA AiCall, PLAN 3-0 — 사용자 결정 필요)와 무관하게 MockAdapter로 파이프라인(발신 스케줄러→call_sessions 상태 기계→LLM 분류·리포트→calls/reports 화면 실연결) 선개발 가능
 4. 디자인은 토큰 교체만으로 전체 반영되는 구조 확인 — 확정값 대기, 기능 개발 블로킹 아님
 - **CTA 운영 정비 (2026-07-06 저녁, reviewer PASS·머지됨)**: `USER_CHECK.md` 신설(유포용 utm 링크 규칙·데이터 설명·열람 방법 — utm_source=test 규칙 포함) + `/admin/metrics` 한글 대시보드 전면 개편(요약 카드·퍼널 설명·채널 표·일별 추이·최근 활동·대기자 마스킹, test 유입 집계 제외, KST 명시, lib.test.ts 13케이스). 총 테스트 40개. **프로덕션 미배포 — Phase 2 스모크 후 함께 배포.**
