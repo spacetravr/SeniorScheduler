@@ -23,9 +23,49 @@
   - 메모: UNCERTAIN 정직성 카드("억지로 판정 안 함")는 사용자 요청으로 랜딩에서 제거됨 (제품 동작은 불변)
 
 ### 다음 할 일
-1. GitHub push + Vercel 프로덕션 배포 (사용자 확인 후)
+1. ~~GitHub push + Vercel 프로덕션 배포~~ ✅ 완료 (피드백 4건 반영분까지 3회 배포)
 2. 설문 배포 전: ADMIN_PASSWORD 변경, 설문용 utm 링크 확정
 3. (선택) waitlist에 전화번호/관심 이유 필드 추가 여부 결정
+
+---
+
+## 도구·자동화 로드맵 (2026-07-10 확정 — 전화 기능 자체 관련은 보류)
+
+> 배경: 설문·사전등록으로 시장 검증하면서 개발 속도를 올리기 위한 스킬/MCP/외부 연동 계획.
+> **사용자 지시: 전화 기능 자체에 대한 것(통화 파이프라인·분류 프롬프트 평가 등)은 아직 넣지 않음.**
+> 원칙: 도구는 데이터가 흐르는 길목에만. "있으면 좋은" 수준의 MCP는 추가하지 않음 (컨텍스트·보안 표면 증가).
+
+### A. 지금 (설문 배포 전) — 우선순위 높음
+1. **Playwright MCP 연결**: `claude mcp add playwright npx @playwright/mcp@latest` (프로젝트 `.mcp.json` 공유 가능). 브라우저 실조작으로 UI 확인·스모크 자동화의 기반. ⚠️ 로컬/프리뷰 대상만, 프로덕션 계정 자격증명 주지 말 것 (테스트 전용 계정 사용)
+2. **`/smoke` 스킬** (`.claude/skills/smoke/SKILL.md`): Playwright MCP로 핵심 플로우(랜딩 CTA→사전등록 / 로그인→피보호자 등록→일정→토글→대시보드) 자동 검증. **몇 주째 수동으로 밀린 Phase 2 스모크를 이걸로 통과시키는 게 첫 사용처**
+3. **`/ship` 스킬**: reviewer→머지→`npm test`→push→`vercel --prod`→프로덕션 스모크 (현재 오케스트레이터가 수동 반복 중인 루틴의 스킬화)
+4. **Vercel Web Analytics 추가**: `npm i @vercel/analytics` → 대시보드 Analytics Enable → 루트 레이아웃에 `<Analytics />` (`@vercel/analytics/next`). 무료 플랜 가능, dev에선 미수집, 반영까지 ~1h. ⚠️ 커스텀 이벤트는 Pro 전용 → CTA 이벤트는 기존 자체 `cta_events`로 계속 (중복 아님: Analytics는 방문·이탈 보완용)
+5. 설문 배포 정비(기존 항목): ADMIN_PASSWORD 변경, utm 링크 확정(`?utm_source=survey|kakao|...`), OG 썸네일 품질 확인(카톡 공유 미리보기)
+6. **판단 기준선 사전 합의**: 예) 랜딩 방문→사전등록 5%↑ = 수요 신호, 1%↓ = 메시지 재점검 (숫자 보기 전에 정할 것)
+
+### B. 설문 기간
+1. **Supabase MCP (read-only 필수)**: `.mcp.json`에 HTTP 타입 `https://mcp.supabase.com/mcp?project_ref=hcygbbbbzfpgucqkmxav&read_only=true` + PAT 헤더. 프로젝트 스코프 고정. "이번 주 사전등록 몇 명?"을 대화로 조회
+2. **`/metrics-report` 스킬**: cta_events·waitlist 집계 → 주간 퍼널 리포트(채널별 전환율·전주 대비)
+3. **`/survey-analyze` 스킬**: 설문 CSV → 고정 분석 프레임(세그먼트×지불 의향×채널 교차, Artifact 리포트). ⚠️ 설문 원본에 PII 있으면 저장소 커밋 금지
+4. (선택) **Google Sheets MCP**: Forms→Sheets 자동 연동이면 실시간 응답 분석 가능. CSV 수동으로도 충분하므로 응답이 계속 유입되는 기간에만 가치
+
+### C. 설문 이후 (분석·의사결정)
+1. **`/cost-model` 스킬** (사업 도구 — 전화 기능 구현 아님): 분당 통화료·STT/TTS·LLM 단가 입력 → 통화당 원가→구독료 대비 마진 시뮬레이터. 벤더 비교(CPaaS vs CLOVA)·가격 결정의 근거. 추후 `call_sessions.cost_krw` 실데이터와 대조
+2. **`/interview-notes` 스킬**: 사전등록자 인터뷰 메모 → 고정 프레임(페인 강도·현재 대안·지불 의향·인용문) 구조화 누적
+3. **analyst 에이전트** (`.claude/agents/analyst.md`, Sonnet, 읽기 전용): DB 집계·설문 분석·리포트 전담 (개발 에이전트와 병렬)
+4. **`/competitor-watch` 스킬**: 위식스 등 경쟁사 가격·기능 변화 월 1회 조사→차이표 갱신
+5. **`/handoff` 스킬**: PROGRESS.md 갱신→커밋 루틴 자동화 (저비용, 아무 때나)
+
+### 보류 (전화 기능 착수 시 — 사용자 지시로 지금 안 함)
+- `/prompt-eval`: LLM 복약 분류(DONE/NOT_DONE/UNCERTAIN) 회귀 평가 하네스 — Phase 3 착수와 동시 필수 (사투리·모호 응답 케이스셋)
+
+### 스킬 작성 규칙 (공식 문서 요지)
+- 위치 `.claude/skills/<name>/SKILL.md`, YAML frontmatter(name·description) + 본문. **description이 트리거 라우팅 규칙** — "언제 발동하는지"를 구체적으로
+- 본문은 짧게(500줄 이하), 상세는 `references/` 분리. 스킬 하나 = 역할 하나. 결정적 작업(집계·파싱)은 스크립트로
+- 도입/변경 시 이 파일 결정사항에 버전 기록 (CLAUDE.md 세션 운영 규칙 3)
+
+### 붙이지 않기로 한 것 (검토 완료)
+- GitHub MCP(→`gh` CLI로 충분) / Notion·Linear MCP(팀 문서 미사용) / Sentry MCP(베타 규모에선 Vercel logs로 충분) / 결제·알림톡 계열(베타 범위 밖)
 
 ### 블로커
 - 없음
