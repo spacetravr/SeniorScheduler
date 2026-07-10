@@ -24,21 +24,29 @@ const PROBLEMS = [
   },
 ];
 
-const COMPARISON = {
-  legacy: {
-    label: "기존 돌봄 앱",
+const HERO_POINTS = [
+  "보호자가 웹에서 일정을 등록하면",
+  "예약한 시간에 부모님 전화로 자동 안내",
+  "부모님은 걸려온 전화만 받으시면 됩니다",
+];
+
+const PERSPECTIVES = {
+  guardian: {
+    label: "보호자(자녀)",
+    tagline: "스마트폰이 익숙한 보호자가 모든 설정을 대신합니다.",
     points: [
-      "부모님 폰에도 앱을 설치해야 해요",
-      "데이터·와이파이가 켜져 있어야 해요",
-      "작은 글씨와 복잡한 화면을 조작해야 해요",
+      "웹에서 복약·병원 일정을 등록해요",
+      "통화가 끝나면 결과 리포트를 받아요",
+      "부모님의 이행률을 한눈에 확인해요",
     ],
   },
-  ours: {
-    label: "이 서비스",
+  senior: {
+    label: "부모님(시니어)",
+    tagline: "배울 것이 하나도 없습니다.",
     points: [
-      "설치할 것이 없어요 — 폴더폰도 괜찮아요",
-      "일반 전화망으로 걸려오는 진짜 전화예요",
-      "부모님은 전화를 받기만 하시면 돼요",
+      "설치할 것도, 조작할 것도 없어요",
+      "평소 쓰던 전화가 울리면 받으시면 돼요",
+      "편하게 대답하시면 그걸로 끝이에요",
     ],
   },
 } as const;
@@ -74,11 +82,24 @@ export default function LandingPage() {
           <br />
           전화 한 통으로
         </h1>
-        <p className="max-w-md text-base leading-relaxed text-text-muted sm:text-lg">
-          보호자가 부모님의 일정을 등록하면, 예약한 시간에 부모님의 일반
-          전화로 자동으로 안내하고 확인해 드립니다. 부모님은 걸려온 전화만
-          받으시면 됩니다.
+        <p className="text-base font-semibold leading-relaxed text-text sm:text-lg">
+          일정 등록 <span className="text-primary" aria-hidden>→</span> 예약
+          시간에 자동 전화 <span className="text-primary" aria-hidden>→</span>{" "}
+          결과 리포트 도착
         </p>
+        <ul className="flex w-full max-w-md flex-col gap-2 text-left">
+          {HERO_POINTS.map((point) => (
+            <li
+              key={point}
+              className="flex items-start gap-2 text-sm leading-relaxed text-text-muted sm:text-base"
+            >
+              <span className="mt-0.5 text-primary" aria-hidden>
+                ✓
+              </span>
+              <span>{point}</span>
+            </li>
+          ))}
+        </ul>
         <div className="w-full pt-2">
           <CtaSection />
         </div>
@@ -111,7 +132,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 차별점: 진짜 전화 */}
+      {/* 차별점: 두 사람 모두 편한 이유 (보호자 vs 시니어 관점) */}
       <section className="flex flex-col gap-6">
         <div className="flex flex-col gap-3 text-center">
           <h2 className="text-2xl font-bold">
@@ -119,34 +140,45 @@ export default function LandingPage() {
             <br className="sm:hidden" /> 진짜 전화입니다
           </h2>
           <p className="mx-auto max-w-md text-base leading-relaxed text-text-muted">
-            기존 돌봄 서비스는 부모님 휴대폰에도 앱을 설치하고, 데이터를 켜
-            두고, 작은 화면을 조작해야 했습니다. 이 서비스는 부모님이 평소
-            쓰시던 전화기로 걸려온 전화를 받기만 하면 됩니다.
+            보호자와 부모님, 두 분의 경험은 이렇게 다릅니다. 어려운 조작은
+            익숙한 보호자가 맡고, 부모님은 전화만 받으시면 됩니다.
           </p>
         </div>
         <div className="flex flex-col gap-4 sm:flex-row">
           <div className="flex flex-1 flex-col gap-3 rounded-base border border-surface p-6">
-            <span className="text-sm font-semibold text-text-muted">
-              {COMPARISON.legacy.label}
-            </span>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold text-primary">
+                {PERSPECTIVES.guardian.label}
+              </span>
+              <p className="text-sm font-medium leading-relaxed text-text">
+                {PERSPECTIVES.guardian.tagline}
+              </p>
+            </div>
             <ul className="flex flex-col gap-3">
-              {COMPARISON.legacy.points.map((point) => (
+              {PERSPECTIVES.guardian.points.map((point) => (
                 <li
                   key={point}
                   className="flex items-start gap-2 text-sm leading-relaxed text-text-muted"
                 >
-                  <span aria-hidden>✕</span>
+                  <span className="text-primary" aria-hidden>
+                    ✓
+                  </span>
                   <span>{point}</span>
                 </li>
               ))}
             </ul>
           </div>
           <div className="flex flex-1 flex-col gap-3 rounded-base bg-surface p-6">
-            <span className="text-sm font-semibold text-primary">
-              {COMPARISON.ours.label}
-            </span>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold text-primary">
+                {PERSPECTIVES.senior.label}
+              </span>
+              <p className="text-sm font-medium leading-relaxed text-text">
+                {PERSPECTIVES.senior.tagline}
+              </p>
+            </div>
             <ul className="flex flex-col gap-3">
-              {COMPARISON.ours.points.map((point) => (
+              {PERSPECTIVES.senior.points.map((point) => (
                 <li
                   key={point}
                   className="flex items-start gap-2 text-sm font-medium leading-relaxed text-text"
@@ -191,62 +223,109 @@ export default function LandingPage() {
             <br className="sm:hidden" /> 이런 리포트가 도착합니다
           </h2>
           <p className="mx-auto max-w-md text-base leading-relaxed text-text-muted">
-            부모님과의 통화 내용을 정리해 보호자에게 알려드립니다. 아래는
-            보호자가 받아 보실 리포트의 예시입니다.
+            부모님과의 통화 내용을 요약해 보호자에게 알려드리고, 필요하면
+            대화 내용까지 그대로 확인하실 수 있습니다. 아래는 보호자가 받아
+            보실 리포트의 예시입니다.
           </p>
         </div>
 
-        {/* 목업 카드 1: 정상 케이스 */}
-        <div className="flex flex-col gap-4 rounded-base border border-surface p-6">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-semibold">
-              오전 9:00 · 어머님 안부 전화 완료
-            </span>
-            <span className="shrink-0 rounded-base bg-surface px-2 py-1 text-xs text-text-muted">
-              예시 화면입니다
+        {/* 목업 카드 1: 실제 앱 리포트 화면 느낌 */}
+        <div className="overflow-hidden rounded-base border border-surface">
+          {/* 상단 헤더 */}
+          <div className="flex items-center justify-between gap-2 border-b border-surface p-5">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs text-text-muted">
+                7월 10일 (목) · 오전 9:00
+              </span>
+              <span className="font-semibold">어머님 안부 전화 완료</span>
+            </div>
+            <span className="inline-flex shrink-0 items-center rounded-base bg-primary px-2.5 py-1 text-xs font-semibold leading-none text-bg">
+              복약 완료
             </span>
           </div>
-          <div className="flex items-start gap-3 rounded-base bg-surface p-4">
-            <span
-              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-bg"
-              aria-hidden
-            >
-              ✓
-            </span>
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-semibold">복약</span>
-              <p className="text-sm leading-relaxed text-text-muted">
-                혈압약을 잘 챙겨 드셨다고 답하셨어요.
+
+          {/* 항목 행 */}
+          <div className="flex flex-col gap-3 p-5">
+            <div className="flex items-center gap-3 rounded-base bg-surface p-4">
+              <span
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-bg"
+                aria-hidden
+              >
+                ✓
+              </span>
+              <div className="flex flex-1 items-center justify-between gap-2">
+                <span className="text-sm font-semibold">복약</span>
+                <span className="text-sm text-text-muted">
+                  혈압약 챙겨 드심
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-base bg-surface p-4">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center text-lg" aria-hidden>
+                🙂
+              </span>
+              <div className="flex flex-1 items-center justify-between gap-2">
+                <span className="text-sm font-semibold">기분</span>
+                <span className="text-sm text-text-muted">
+                  컨디션 좋음
+                </span>
+              </div>
+            </div>
+
+            {/* 통화 요약 블록 */}
+            <div className="flex flex-col gap-2 rounded-base border border-surface p-4">
+              <span className="text-xs font-semibold text-primary">
+                통화 요약
+              </span>
+              <p className="text-sm leading-relaxed text-text">
+                오전 9시에 통화했어요. 혈압약을 방금 챙겨 드셨다고 하셨고,
+                오늘은 경로당에 다녀오실 예정이라고 하셨어요.
               </p>
             </div>
           </div>
-          <div className="flex items-start gap-3 rounded-base bg-surface p-4">
-            <span className="mt-0.5 text-lg" aria-hidden>
-              🙂
-            </span>
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-semibold">기분</span>
-              <p className="text-sm leading-relaxed text-text-muted">
-                오늘 컨디션이 좋다고 하셨어요.
-              </p>
-            </div>
+
+          {/* 하단 예시 라벨 */}
+          <div className="border-t border-surface px-5 py-3">
+            <span className="text-xs text-text-muted">예시 화면입니다</span>
           </div>
         </div>
 
-        {/* 목업 카드 2: 확인 필요 — 정직성 포인트 */}
-        <div className="flex flex-col gap-3 rounded-base bg-surface p-6">
-          <div className="flex items-center justify-between gap-2">
-            <span className="rounded-base bg-accent px-3 py-1 text-xs font-semibold text-bg">
-              확인이 필요해요
-            </span>
+        {/* 목업 카드 2: 대화 내용 직접 확인 포인트 */}
+        <div className="flex flex-col gap-4 rounded-base bg-surface p-6">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-semibold leading-snug">
+              부모님과 나눈 대화,
+              <br className="sm:hidden" /> 그대로 확인할 수 있어요
+            </h3>
             <span className="shrink-0 text-xs text-text-muted">
               예시 화면입니다
             </span>
           </div>
-          <p className="text-sm leading-relaxed text-text">
-            답변이 명확하지 않을 때는 억지로 판단하지 않고 &lsquo;확인이
-            필요해요&rsquo;로 알려드립니다. 보호자가 직접 확인하실 수 있도록요.
+          <p className="text-sm leading-relaxed text-text-muted">
+            요약만으로 부족할 때는 리포트에서 통화 대화 내용을 그대로 읽어 볼
+            수 있어요. 어떤 이야기가 오갔는지 보호자가 직접 확인하실 수
+            있도록요.
           </p>
+
+          {/* 대화 전사 스니펫 */}
+          <div className="flex flex-col gap-3 rounded-base bg-bg p-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-semibold text-text-muted">
+                안내
+              </span>
+              <p className="w-fit rounded-base bg-surface px-3 py-2 text-sm leading-relaxed text-text">
+                어머님, 오늘 아침 혈압약은 드셨어요?
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-xs font-semibold text-text-muted">
+                어머님
+              </span>
+              <p className="w-fit rounded-base bg-primary px-3 py-2 text-sm leading-relaxed text-bg">
+                응, 방금 물이랑 같이 먹었어.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
