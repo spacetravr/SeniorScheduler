@@ -24,6 +24,25 @@ const PROBLEMS = [
   },
 ];
 
+const COMPARISON = {
+  legacy: {
+    label: "기존 돌봄 앱",
+    points: [
+      "부모님 폰에도 앱을 설치해야 해요",
+      "데이터·와이파이가 켜져 있어야 해요",
+      "작은 글씨와 복잡한 화면을 조작해야 해요",
+    ],
+  },
+  ours: {
+    label: "이 서비스",
+    points: [
+      "설치할 것이 없어요 — 폴더폰도 괜찮아요",
+      "일반 전화망으로 걸려오는 진짜 전화예요",
+      "부모님은 전화를 받기만 하시면 돼요",
+    ],
+  },
+} as const;
+
 const STEPS = [
   {
     step: "1",
@@ -92,6 +111,57 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* 차별점: 진짜 전화 */}
+      <section className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3 text-center">
+          <h2 className="text-2xl font-bold">
+            앱이 아니라,
+            <br className="sm:hidden" /> 진짜 전화입니다
+          </h2>
+          <p className="mx-auto max-w-md text-base leading-relaxed text-text-muted">
+            기존 돌봄 서비스는 부모님 휴대폰에도 앱을 설치하고, 데이터를 켜
+            두고, 작은 화면을 조작해야 했습니다. 이 서비스는 부모님이 평소
+            쓰시던 전화기로 걸려온 전화를 받기만 하면 됩니다.
+          </p>
+        </div>
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <div className="flex flex-1 flex-col gap-3 rounded-base border border-surface p-6">
+            <span className="text-sm font-semibold text-text-muted">
+              {COMPARISON.legacy.label}
+            </span>
+            <ul className="flex flex-col gap-3">
+              {COMPARISON.legacy.points.map((point) => (
+                <li
+                  key={point}
+                  className="flex items-start gap-2 text-sm leading-relaxed text-text-muted"
+                >
+                  <span aria-hidden>✕</span>
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex flex-1 flex-col gap-3 rounded-base bg-surface p-6">
+            <span className="text-sm font-semibold text-primary">
+              {COMPARISON.ours.label}
+            </span>
+            <ul className="flex flex-col gap-3">
+              {COMPARISON.ours.points.map((point) => (
+                <li
+                  key={point}
+                  className="flex items-start gap-2 text-sm font-medium leading-relaxed text-text"
+                >
+                  <span className="text-primary" aria-hidden>
+                    ✓
+                  </span>
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
       {/* 작동 3단계 */}
       <section className="flex flex-col gap-6">
         <h2 className="text-center text-2xl font-bold">이렇게 작동합니다</h2>
@@ -110,6 +180,73 @@ export default function LandingPage() {
               </p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* 리포트 미리보기 */}
+      <section className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3 text-center">
+          <h2 className="text-2xl font-bold">
+            통화가 끝나면,
+            <br className="sm:hidden" /> 이런 리포트가 도착합니다
+          </h2>
+          <p className="mx-auto max-w-md text-base leading-relaxed text-text-muted">
+            부모님과의 통화 내용을 정리해 보호자에게 알려드립니다. 아래는
+            보호자가 받아 보실 리포트의 예시입니다.
+          </p>
+        </div>
+
+        {/* 목업 카드 1: 정상 케이스 */}
+        <div className="flex flex-col gap-4 rounded-base border border-surface p-6">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-semibold">
+              오전 9:00 · 어머님 안부 전화 완료
+            </span>
+            <span className="shrink-0 rounded-base bg-surface px-2 py-1 text-xs text-text-muted">
+              예시 화면입니다
+            </span>
+          </div>
+          <div className="flex items-start gap-3 rounded-base bg-surface p-4">
+            <span
+              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-bg"
+              aria-hidden
+            >
+              ✓
+            </span>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold">복약</span>
+              <p className="text-sm leading-relaxed text-text-muted">
+                혈압약을 잘 챙겨 드셨다고 답하셨어요.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 rounded-base bg-surface p-4">
+            <span className="mt-0.5 text-lg" aria-hidden>
+              🙂
+            </span>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold">기분</span>
+              <p className="text-sm leading-relaxed text-text-muted">
+                오늘 컨디션이 좋다고 하셨어요.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 목업 카드 2: 확인 필요 — 정직성 포인트 */}
+        <div className="flex flex-col gap-3 rounded-base bg-surface p-6">
+          <div className="flex items-center justify-between gap-2">
+            <span className="rounded-base bg-accent px-3 py-1 text-xs font-semibold text-bg">
+              확인이 필요해요
+            </span>
+            <span className="shrink-0 text-xs text-text-muted">
+              예시 화면입니다
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed text-text">
+            답변이 명확하지 않을 때는 억지로 판단하지 않고 &lsquo;확인이
+            필요해요&rsquo;로 알려드립니다. 보호자가 직접 확인하실 수 있도록요.
+          </p>
         </div>
       </section>
 
