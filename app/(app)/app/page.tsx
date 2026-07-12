@@ -53,7 +53,7 @@ export default async function DashboardPage() {
       {!hasSeniors ? (
         <EmptyState
           icon="👋"
-          title="안심 전화를 시작해 볼까요?"
+          title="Senior Scheduler를 시작해 볼까요?"
           description="부모님을 등록하고 통화 동의를 완료한 뒤, 복약·병원 일정을 추가하면 예약한 시간에 자동으로 전화를 걸어드려요."
           action={{ href: "/app/seniors", label: "피보호자 등록하기" }}
         />
