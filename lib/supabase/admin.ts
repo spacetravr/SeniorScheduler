@@ -30,6 +30,11 @@ export function getAdminClient(): SupabaseClient {
       persistSession: false,
       autoRefreshToken: false,
     },
+    global: {
+      // Next.js가 서버 fetch(GET)를 데이터 캐시에 저장해 지표가 배포 시점
+      // 스냅샷으로 굳는 문제 방지 — 항상 DB 실시간 값을 읽는다.
+      fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+    },
   });
 
   return cached;

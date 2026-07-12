@@ -43,7 +43,7 @@
 
 ## 2. 유포(배포) 방법 — 링크 만드는 법
 
-**기본 주소**: `https://voicescheduler.vercel.app` <!-- (도메인 변경 예정) -->
+**기본 주소**: `https://seniorscheduler.vercel.app`
 
 채널마다 **다른 utm 파라미터를 붙인 링크**를 만들어 뿌리면, 채널별로 성과가 자동 분리 집계된다.
 utm은 **1페이지(`/`) 링크**에만 붙이면 된다 — 2페이지(`/preregister`)로 넘어가도 utm은 세션에 유지되어 이어진다.
@@ -54,21 +54,28 @@ utm은 **1페이지(`/`) 링크**에만 붙이면 된다 — 2페이지(`/prereg
 | `utm_medium` | 어떤 형태로 (매체) | `social`, `dm`, `qr`, `form` |
 | `utm_campaign` | 어떤 회차/실험인가 | `beta1`, `survey_202607` |
 
-### 바로 쓸 수 있는 링크 예시
+### 채널별 배포 링크 (2026-07-12 확정 — 이 표의 링크만 사용할 것)
 
-```
-카카오톡 단체방:
-https://voicescheduler.vercel.app/?utm_source=kakao&utm_medium=social&utm_campaign=beta1
+네이버 카페 등 커뮤니티에 댓글/게시물로 뿌릴 때, 아래 채널별 링크를 그대로 복사해서 사용한다.
+대시보드 채널 표에는 `utm_source` 값(예: `mom-cafe`)으로 표시된다.
 
-네이버 카페 글:
-https://voicescheduler.vercel.app/?utm_source=naver_cafe&utm_medium=social&utm_campaign=beta1
+| 채널 | 링크 |
+|---|---|
+| 설문지 | `https://seniorscheduler.vercel.app/?utm_source=survey` |
+| 맘카페 | `https://seniorscheduler.vercel.app/?utm_source=mom-cafe` |
+| 돌봄 카페 | `https://seniorscheduler.vercel.app/?utm_source=care-cafe` |
+| 부모 카페 | `https://seniorscheduler.vercel.app/?utm_source=parents-cafe` |
+| 노인 카페 | `https://seniorscheduler.vercel.app/?utm_source=elder-cafe` |
+| 시니어 카페 | `https://seniorscheduler.vercel.app/?utm_source=senior-cafe` |
+| 낚시·등산 카페 | `https://seniorscheduler.vercel.app/?utm_source=fishing-hiking-cafe` |
+| 골프 카페 | `https://seniorscheduler.vercel.app/?utm_source=golf-cafe` |
+| 테니스·배드민턴 카페 | `https://seniorscheduler.vercel.app/?utm_source=tennis-badminton-cafe` |
+| 교사 카페 | `https://seniorscheduler.vercel.app/?utm_source=teacher-cafe` |
+| 부동산 카페 | `https://seniorscheduler.vercel.app/?utm_source=realestate-cafe` |
+| (본인 테스트용) | `https://seniorscheduler.vercel.app/?utm_source=test` — 집계 제외 |
 
-설문지(구글폼 등) 마지막에 삽입:
-https://voicescheduler.vercel.app/?utm_source=survey&utm_medium=form&utm_campaign=survey_202607
-
-인스타그램 프로필/스토리:
-https://voicescheduler.vercel.app/?utm_source=instagram&utm_medium=social&utm_campaign=beta1
-```
+- 같은 채널 안에서 게시물/댓글을 구분하고 싶으면 `&utm_medium=post` 또는 `&utm_medium=comment`를 뒤에 붙인다 (선택).
+- 여러 맘카페에 올리더라도 utm_source는 `mom-cafe` 하나로 통일 (카페별 세분화가 필요해지면 `&utm_campaign=카페이름` 추가).
 
 ### 유포 시 규칙
 
@@ -76,7 +83,7 @@ https://voicescheduler.vercel.app/?utm_source=instagram&utm_medium=social&utm_ca
 2. `utm_source` 값은 **미리 정한 표기만** 사용 (kakao / naver_cafe / instagram / survey …). 같은 채널을 `Kakao`, `kakaotalk` 등으로 섞어 쓰면 집계가 쪼개진다.
 3. 새 채널·새 회차를 시작할 때는 이 문서에 사용한 utm 값을 추가로 기록해 둘 것.
 4. **본인/팀원이 테스트로 접속할 때는 반드시** `utm_source=test` **링크를 사용** — 실제 수요 데이터와 섞이지 않게 하기 위함:
-   `https://voicescheduler.vercel.app/?utm_source=test`
+   `https://seniorscheduler.vercel.app/?utm_source=test`
 
 ---
 
@@ -115,7 +122,7 @@ https://voicescheduler.vercel.app/?utm_source=instagram&utm_medium=social&utm_ca
 ### 방법 A — 지표 대시보드 (일상 확인용)
 
 ```
-https://voicescheduler.vercel.app/admin/metrics
+https://seniorscheduler.vercel.app/admin/metrics
 ```
 
 접속하면 비밀번호 입력 화면이 뜬다. `ADMIN_PASSWORD` 환경변수 값을 입력하면 채널별 퍼널(방문 → 사전등록 클릭 → 이메일 제출)과 전환율이 표시된다.
