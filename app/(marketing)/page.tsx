@@ -89,8 +89,8 @@ export default function LandingPage() {
             <div className="w-full flex-1">
               <div className="relative mx-auto aspect-[4/5] w-full max-w-md overflow-hidden rounded-base shadow-sm sm:max-w-lg">
                 <Image
-                  src="/images/hero-call-2.jpg"
-                  alt="창가에서 전화를 받으며 환하게 웃고 계신 어머님"
+                  src="/images/hero-korean.jpg"
+                  alt="밝게 웃고 계신 어머님"
                   fill
                   priority
                   sizes="(max-width: 1024px) 100vw, 50vw"
