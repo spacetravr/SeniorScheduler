@@ -57,7 +57,11 @@ async function postJson(url: string, body: unknown): Promise<Response | null> {
   }
 }
 
-export function useCtaTracking() {
+/**
+ * @param trackView 마운트 시 VIEW 이벤트를 1회 전송할지 여부(기본 true).
+ *   랜딩(`/`)은 true, /preregister 직접 진입은 false로 세션당 1회 unique 제약을 지킨다.
+ */
+export function useCtaTracking({ trackView = true }: { trackView?: boolean } = {}) {
   const readyRef = useRef(false);
 
   useEffect(() => {
@@ -66,11 +70,12 @@ export function useCtaTracking() {
     getUtm();
     readyRef.current = true;
 
+    if (!trackView) return;
     if (window.sessionStorage.getItem(VIEW_FLAG_KEY)) return;
     window.sessionStorage.setItem(VIEW_FLAG_KEY, "1");
     void sendEvent("VIEW");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [trackView]);
 
   const sendEvent = useCallback(async (type: CtaEventType) => {
     const body: CtaEventInput = {
