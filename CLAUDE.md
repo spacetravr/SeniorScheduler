@@ -78,6 +78,7 @@
 2. 각 작업 단위는 별도 브랜치(`feat/ui-*`, `feat/data-*`) 또는 git worktree. main 직접 커밋 금지.
 3. 작업 완료 시 반드시 reviewer 에이전트(.claude/agents/reviewer.md)로 검토 후 머지.
 4. 경계를 넘는 수정이 필요하면 임의로 하지 말고 오케스트레이터(메인 세션)에 보고.
+5. **핫픽스 패스트트랙 (2026-07-12 사용자 지시)**: 로직 변경이 없는 단순 수정(이미지·문구·색상·정렬 등 1~5줄 스타일/에셋 교체)은 에이전트·reviewer 생략하고 오케스트레이터가 직접 처리한다 — 브랜치에 커밋 → 빌드 확인 → 머지 → 배포 (5분 내 목표). 로직·추적·계약·DB·인증에 닿는 변경은 여전히 정식 절차(에이전트+reviewer) 필수.
 
 ## 세션 운영 규칙
 1. **모델 배분**: 오케스트레이터(메인 세션) = Fable / ui-builder·data-api = Opus / reviewer = Sonnet (`.claude/agents/*.md` frontmatter `model:`에 명시됨 — 임의 변경 금지)
