@@ -24,6 +24,9 @@
 - **히어로 사진 최종**: 사용자 제공 이미지(`/images/hero-senior-man.jpg`, 통화 중 웃는 시니어 남성)로 확정. 가로 원본이라 4:5 크롭 + object-position 35% 조정
   - ⚠️ **라이선스 미확인** (출처 불명 다운로드 파일, 워터마크 없음). 베타 검증용으로 사용 중 — **정식 출시 전 라이선스 확정 이미지로 교체 필요**. 이전 후보(Unsplash 무료: hero-call/hero-call-2/hero-korean)는 public/images/에 보존됨
 - 프로덕션 반영 확인 완료. **설문 배포 가능 상태.**
+- **후속 (2026-07-12 밤)**: 히어로 사진 v3(사용자 제공 고해상)+히어로 중앙 정렬 / 전역 `word-break: keep-all`(어절 단위 줄바꿈) / **채널별 배포 링크 11종 확정** (USER_CHECK.md 표: survey·mom-cafe·care-cafe·parents-cafe·elder-cafe·senior-cafe·fishing-hiking-cafe·golf-cafe·tennis-badminton-cafe·teacher-cafe·realestate-cafe + test)
+- **버그 수정: 지표 캐시 고착** — Next 데이터 캐시가 Supabase GET을 저장해 `/admin/metrics`가 배포 시점 스냅샷을 계속 보여줌 → `lib/supabase/admin.ts` fetch `cache: "no-store"` 적용, 채널별 실시간 집계 검증 완료(mom-cafe/golf-cafe 주입→표시→삭제). CLAUDE.md 핫픽스 패스트트랙 규칙 신설(단순 수정은 에이전트/리뷰어 생략)
+- **uptime 모니터**: `.github/workflows/uptime.yml` — 10분 주기 `/`·`/preregister` 200 점검, 실패 시 GitHub Issue 자동 생성(→소유자 메일 알림). cta_events·waitlist는 사용자 셀프 테스트 위해 0으로 재초기화됨
 
 ### 다음 할 일
 1. **설문 배포 전 잔여**: ADMIN_PASSWORD 변경(현 vs-beta-2026), 설문용 utm 링크 확정(`https://seniorscheduler.vercel.app/?utm_source=survey` 등), OG 썸네일 카톡 미리보기 확인
