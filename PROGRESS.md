@@ -6,6 +6,35 @@
 
 ---
 
+## 2026-07-12 — 세션 #4: 랜딩 v2 (Senior Scheduler 리브랜딩 + 2페이지 사전등록) 배포 완료
+
+### 완료
+- **데이터 초기화 (사용자 요청)**: cta_events·waitlist 전체 삭제 (설문 배포 전 깨끗한 0 상태. 스모크로 넣은 test 데이터도 검증 후 삭제)
+- **브랜드/URL 전환**: 서비스명 **Senior Scheduler** 확정. Vercel 프로젝트명 `voicescheduler`→`seniorscheduler`, 새 프로덕션 URL **https://seniorscheduler.vercel.app**, 구 주소는 308 리다이렉트 유지(기존 공유 링크 안 깨짐). `NEXT_PUBLIC_SITE_URL` env·`.vercel/project.json` 갱신
+- **랜딩 v2** (ui-builder `feat/ui-landing-v2` → reviewer PASS → 머지 97d4fcf, familycarecall.com 구조 참고):
+  - 1페이지 `/`: 헤더(로고+사전등록 버튼)→풀블리드 히어로(핵심 한 줄 멘트+실사진)→3단계→보호자/시니어 혜택→**앱형 리포트 미리보기(형식 개편: 상태 칩+요약+기분/건강+전사 스니펫)**→CTA 배너→푸터(의료 미제공 고지). 가격 언급 전부 제거. 데스크톱 풀스크린 배율+모바일 반응형
+  - 2페이지 `/preregister`: 좌 브랜드 패널(핵심 설명+혜택 3종: 첫 달 무료/결제 없음/출시 시 이메일 최우선 안내) / 우 이메일 등록 카드(유의사항: 출시 안내 목적만·결제 정보 요구 안 함·수신 거부 가능·구매 약정 아님, 완료 화면 멘트)
+  - 추적: VIEW는 `/`에서 세션당 1회, [사전등록하기] 클릭=CLICK_TRY(=2페이지 진입), 이메일 제출=WAITLIST_SUBMIT. 모달(WaitlistModal/CtaSection) 삭제. `useCtaTracking`에 `trackView` 옵션 추가. 계약(cta.ts) 무변경
+  - 사진: Unsplash 무료 라이선스 4장 `public/images/` (hero-call/senior-man-phone/family 사용)
+- **관리자 지표 개편** (data-api `feat/data-metrics-v2` → reviewer PASS → 머지 3dc1da1): 퍼널을 방문→사전등록 클릭(페이지 진입)→이메일 제출 3단계로 재정의, CLICK_SUBSCRIBE 완전 제거(잔존 데이터는 집계에서 방어적 무시), USER_CHECK.md 새 구조로 재작성
+- 통합 main: `npm test` 209/209, 빌드 통과 → **`vercel deploy --prod` 배포 + 프로덕션 스모크 통과** (전 라우트 200, 구 도메인 308, CTA/waitlist API 실데이터 E2E 검증 후 테스트 데이터 삭제)
+
+### 다음 할 일
+1. **설문 배포 전 잔여**: ADMIN_PASSWORD 변경(현 vs-beta-2026), 설문용 utm 링크 확정(`https://seniorscheduler.vercel.app/?utm_source=survey` 등), OG 썸네일 카톡 미리보기 확인
+2. **사용자 수동**: Supabase Auth Site URL/Redirect URLs를 `https://seniorscheduler.vercel.app` 기준으로 갱신 (magic link 보조 로그인용)
+3. GitHub 저장소명도 SeniorScheduler로 이미 일치 — 코드 push 완료 여부 확인
+4. Phase 3 진입(MockAdapter 파이프라인) 또는 도구 로드맵 A항목(Playwright MCP, /smoke, /ship)
+
+### 결정사항
+- **서비스명/브랜드: Senior Scheduler** (2026-07-12, 사용자 결정). 프로덕션 URL seniorscheduler.vercel.app
+- 사전등록 혜택 문구: "정식 출시 시 첫 달 무료" (가격 티저 섹션은 랜딩에서 제거 — 지불 의향 측정은 설문 담당)
+- 랜딩 사진은 Unsplash 무료 라이선스만 사용 (Unsplash+ 프리미엄 제외)
+
+### 블로커
+- 없음
+
+---
+
 ## 2026-07-10 — 세션 #3: 랜딩 보강 (설문 배포 준비)
 
 ### 완료
