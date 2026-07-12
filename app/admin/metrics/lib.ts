@@ -5,6 +5,11 @@ import type { CtaEventType } from "@/lib/contracts/cta";
  * /admin/metrics 전용 집계·포맷 유틸.
  * - 모든 날짜/시각은 KST(Asia/Seoul) 고정. 로컬 타임존 의존 금지.
  * - utm_source=test 유입은 본 집계에서 제외(별도 표시)하기 위한 판별 포함.
+ *
+ * 퍼널(2페이지 구조):
+ *   ① 방문(VIEW) → ② 사전등록 클릭(CLICK_TRY, /preregister 진입) → ③ 이메일 제출(WAITLIST_SUBMIT)
+ * CLICK_SUBSCRIBE는 UI에서 제거되어 더 이상 발생하지 않는다. 과거 데이터가 남아 있어도
+ * 집계에서 무시한다(계약 enum은 유지). 알 수 없는 타입도 방어적으로 무시한다.
  */
 
 export const KST = "Asia/Seoul";
@@ -24,6 +29,14 @@ export type WaitlistRow = {
   created_at: string;
 };
 
+/**
+ * 현재 퍼널에서 집계 대상인 이벤트 타입만 통과시킨다.
+ * CLICK_SUBSCRIBE(제거됨)·알 수 없는 타입은 false → 모든 집계에서 배제.
+ */
+export function isCountedType(type: string): type is "VIEW" | "CLICK_TRY" | "WAITLIST_SUBMIT" {
+  return type === "VIEW" || type === "CLICK_TRY" || type === "WAITLIST_SUBMIT";
+}
+
 export function sourceLabel(utmSource: string | null): string {
   const s = (utmSource ?? "").trim();
   return s === "" ? DIRECT : s;
@@ -33,17 +46,17 @@ export function isTest(utmSource: string | null): boolean {
   return (utmSource ?? "").trim().toLowerCase() === TEST_SOURCE;
 }
 
-/** 이벤트 타입 → 한글 표기. */
-export function eventKo(type: CtaEventType): string {
+/** 이벤트 타입 → 한글 표기. 집계 대상만 노출(그 외는 "기타"). */
+export function eventKo(type: string): string {
   switch (type) {
     case "VIEW":
       return "방문";
-    case "CLICK_SUBSCRIBE":
-      return "구독 클릭";
     case "CLICK_TRY":
-      return "베타 클릭";
+      return "사전등록 클릭";
     case "WAITLIST_SUBMIT":
       return "이메일 제출";
+    default:
+      return "기타";
   }
 }
 
@@ -93,23 +106,21 @@ export function pct(n: number, d: number): string {
 export type ChannelRow = {
   source: string;
   view: number;
-  clickSubscribe: number;
-  clickTry: number;
-  submit: number;
+  clickTry: number; // 사전등록 클릭(페이지 진입)
+  submit: number; // 이메일 제출
 };
 
 export type DayRow = {
   dateKey: string;
   view: number;
-  click: number;
+  click: number; // 사전등록 클릭
   submit: number;
 };
 
 export type Summary = {
   visitors: number; // distinct session_uuid (test 제외)
-  clickSubscribe: number;
-  clickTry: number;
-  waitlist: number;
+  clickTry: number; // 사전등록 클릭(페이지 진입)
+  waitlist: number; // 이메일 제출자 수
 };
 
 /** 집계 결과 묶음. */
@@ -124,14 +135,14 @@ export type Metrics = {
 };
 
 function emptyChannel(source: string): ChannelRow {
-  return { source, view: 0, clickSubscribe: 0, clickTry: 0, submit: 0 };
+  return { source, view: 0, clickTry: 0, submit: 0 };
 }
 
-function addEvent(row: ChannelRow, type: CtaEventType) {
+function addEvent(row: ChannelRow, type: string) {
   if (type === "VIEW") row.view += 1;
-  else if (type === "CLICK_SUBSCRIBE") row.clickSubscribe += 1;
   else if (type === "CLICK_TRY") row.clickTry += 1;
   else if (type === "WAITLIST_SUBMIT") row.submit += 1;
+  // 그 외(CLICK_SUBSCRIBE·미상)는 무시.
 }
 
 export function computeMetrics(
@@ -139,17 +150,17 @@ export function computeMetrics(
   waitlist: WaitlistRow[],
   now: Date = new Date(),
 ): Metrics {
-  const nonTest = events.filter((e) => !isTest(e.utm_source));
-  const testEvents = events.filter((e) => isTest(e.utm_source));
+  // 집계 대상 타입만 남기고, test 유입을 분리.
+  const counted = events.filter((e) => isCountedType(e.type));
+  const nonTest = counted.filter((e) => !isTest(e.utm_source));
+  const testEvents = counted.filter((e) => isTest(e.utm_source));
 
   // 요약: 고유 방문자 = distinct session_uuid (test 제외).
   const visitorSet = new Set<string>();
-  let clickSubscribe = 0;
   let clickTry = 0;
   for (const e of nonTest) {
     visitorSet.add(e.session_uuid);
-    if (e.type === "CLICK_SUBSCRIBE") clickSubscribe += 1;
-    else if (e.type === "CLICK_TRY") clickTry += 1;
+    if (e.type === "CLICK_TRY") clickTry += 1;
   }
 
   const waitlistNonTest = waitlist.filter((w) => !isTest(w.utm_source));
@@ -182,7 +193,7 @@ export function computeMetrics(
     const row = dayMap.get(k);
     if (!row) continue; // 7일 범위 밖.
     if (e.type === "VIEW") row.view += 1;
-    else if (e.type === "CLICK_SUBSCRIBE" || e.type === "CLICK_TRY") row.click += 1;
+    else if (e.type === "CLICK_TRY") row.click += 1;
     else if (e.type === "WAITLIST_SUBMIT") row.submit += 1;
   }
   const days = dayKeys.map((k) => dayMap.get(k)!);
@@ -206,7 +217,6 @@ export function computeMetrics(
   return {
     summary: {
       visitors: visitorSet.size,
-      clickSubscribe,
       clickTry,
       waitlist: waitlistNonTest.length,
     },
