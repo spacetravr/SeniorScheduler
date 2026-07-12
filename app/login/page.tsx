@@ -10,7 +10,7 @@ import { LoginForm } from "@/components/app/LoginForm";
 import { loginErrorMessage } from "@/components/app/login-messages";
 
 export const metadata: Metadata = {
-  title: "로그인 · 안심 전화",
+  title: "로그인 · Senior Scheduler",
 };
 
 export default function LoginPage({
@@ -24,7 +24,7 @@ export default function LoginPage({
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center gap-8 px-5 py-12">
       <div className="flex flex-col items-center gap-2 text-center">
         <Link href="/" className="text-lg font-bold">
-          안심 전화
+          Senior Scheduler
         </Link>
         <p className="text-sm leading-relaxed text-text-muted">
           부모님을 위한 안부·복약 전화 서비스입니다.

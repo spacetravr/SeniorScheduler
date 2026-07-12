@@ -27,7 +27,7 @@ export function DesktopSidebar() {
   return (
     <aside className="hidden w-56 shrink-0 flex-col gap-1 border-r border-surface p-4 md:flex">
       <Link href="/app" className="mb-4 px-2 text-lg font-bold">
-        안심 전화
+        Senior Scheduler
       </Link>
       {NAV.map((item) => {
         const active = isActive(pathname, item.href);
