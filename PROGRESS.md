@@ -28,16 +28,27 @@
 - **버그 수정: 지표 캐시 고착** — Next 데이터 캐시가 Supabase GET을 저장해 `/admin/metrics`가 배포 시점 스냅샷을 계속 보여줌 → `lib/supabase/admin.ts` fetch `cache: "no-store"` 적용, 채널별 실시간 집계 검증 완료(mom-cafe/golf-cafe 주입→표시→삭제). CLAUDE.md 핫픽스 패스트트랙 규칙 신설(단순 수정은 에이전트/리뷰어 생략)
 - **uptime 모니터**: `.github/workflows/uptime.yml` — 10분 주기 `/`·`/preregister` 200 점검, 실패 시 GitHub Issue 자동 생성(→소유자 메일 알림). cta_events·waitlist는 사용자 셀프 테스트 위해 0으로 재초기화됨
 
-### 다음 할 일
-1. **설문 배포 전 잔여**: ADMIN_PASSWORD 변경(현 vs-beta-2026), 설문용 utm 링크 확정(`https://seniorscheduler.vercel.app/?utm_source=survey` 등), OG 썸네일 카톡 미리보기 확인
-2. **사용자 수동**: Supabase Auth Site URL/Redirect URLs를 `https://seniorscheduler.vercel.app` 기준으로 갱신 (magic link 보조 로그인용)
-3. GitHub 저장소명도 SeniorScheduler로 이미 일치 — 코드 push 완료 여부 확인
-4. Phase 3 진입(MockAdapter 파이프라인) 또는 도구 로드맵 A항목(Playwright MCP, /smoke, /ship)
+### 현재 상태 스냅샷 (세션 종료 시점 — 다음 세션은 여기부터)
+- 프로덕션: **https://seniorscheduler.vercel.app** 라이브, 전 라우트 200, uptime 모니터 가동
+- 데이터: cta_events·waitlist **모두 0** (사용자 셀프 테스트 대기 상태)
+- 사용자 진행 중: `?utm_source=test` 링크로 방문→클릭→이메일 제출 셀프 테스트 → 대시보드(https://seniorscheduler.vercel.app/admin/metrics)에서 집계 확인 예정
+- 배포 채널 링크 11종은 USER_CHECK.md §2 표가 단일 소스 (댓글/게시물용, 설문지는 utm_source=survey)
+
+### 다음 할 일 (우선순위순 — 2026-07-13 세션)
+1. **사용자 셀프 테스트 결과 확인** → 테스트 데이터(전체 또는 해당 세션) 삭제해 0으로 초기화 (삭제는 Supabase REST DELETE로 오케스트레이터가 수행, 지표 페이지는 no-store라 즉시 반영)
+2. **ADMIN_PASSWORD 변경** (현 `vs-beta-2026`) — 사용자에게 새 값 받아 Vercel env(PATCH)+`.env.local` 동시 갱신 후 재배포
+3. **OG 썸네일 카톡 미리보기 확인** (카톡 나에게 보내기로 테스트) — 이상하면 OG 이미지 제작
+4. **링크 배포 시작** (설문지 + 카페 채널별) → 이후는 대시보드 관찰 모드. 판단 기준선(전환율 5%↑ 수요 신호 / 1%↓ 메시지 재점검, 도구 로드맵 A-6) 숫자 보기 전 확정 권장
+5. **사용자 수동**: Supabase Auth Site URL/Redirect URLs를 `https://seniorscheduler.vercel.app`으로 갱신 (magic link 보조 로그인용 — 랜딩 배포와는 무관, 급하지 않음)
+6. 배포 후 여유 시: Phase 3 진입(MockAdapter 파이프라인) 또는 도구 로드맵 A항목(Playwright MCP, /smoke, /ship, Vercel Analytics)
 
 ### 결정사항
-- **서비스명/브랜드: Senior Scheduler** (2026-07-12, 사용자 결정). 프로덕션 URL seniorscheduler.vercel.app
+- **서비스명/브랜드: Senior Scheduler** (2026-07-12, 사용자 결정). 프로덕션 URL seniorscheduler.vercel.app (구 voicescheduler는 308 리다이렉트)
+- **채널 utm_source 표기 확정** (2026-07-12): survey / mom-cafe / care-cafe / parents-cafe / elder-cafe / senior-cafe / fishing-hiking-cafe / golf-cafe / tennis-badminton-cafe / teacher-cafe / realestate-cafe / test(집계 제외). 같은 계열 카페는 하나의 source로 통일, 세분화는 utm_campaign으로
+- **핫픽스 패스트트랙** (2026-07-12, CLAUDE.md 멀티 에이전트 규칙 5): 로직 없는 1~5줄 수정(이미지·문구·스타일)은 에이전트/reviewer 생략, 오케스트레이터 직접 처리 (5분 내 목표)
 - 사전등록 혜택 문구: "정식 출시 시 첫 달 무료" (가격 티저 섹션은 랜딩에서 제거 — 지불 의향 측정은 설문 담당)
-- 랜딩 사진은 Unsplash 무료 라이선스만 사용 (Unsplash+ 프리미엄 제외)
+- 랜딩 사진: Unsplash 무료 라이선스 원칙, 단 현 히어로는 사용자 제공 이미지(라이선스 미확인 — 정식 출시 전 교체 필요)
+- **서버 Supabase 조회는 `cache: "no-store"` 필수** (admin 클라이언트 적용됨) — Next 데이터 캐시가 GET을 고착시키는 것 확인됨. 새 서버 조회 코드 추가 시 동일 주의
 
 ### 블로커
 - 없음
