@@ -127,7 +127,6 @@ function Th({
 }
 
 function ChannelTableRow({ r, muted }: { r: ChannelRow; muted?: boolean }) {
-  const clickTotal = r.clickSubscribe + r.clickTry;
   const base = muted ? "text-text-muted" : "text-text";
   return (
     <tr className="border-t border-text-muted/10">
@@ -135,10 +134,9 @@ function ChannelTableRow({ r, muted }: { r: ChannelRow; muted?: boolean }) {
         {muted ? "테스트 유입 (집계 제외)" : r.source}
       </td>
       <td className={`px-3 py-2 text-right ${base}`}>{r.view}</td>
-      <td className={`px-3 py-2 text-right ${base}`}>{r.clickSubscribe}</td>
       <td className={`px-3 py-2 text-right ${base}`}>{r.clickTry}</td>
       <td className="px-3 py-2 text-right text-text-muted">
-        {pct(clickTotal, r.view)}
+        {pct(r.clickTry, r.view)}
       </td>
       <td className={`px-3 py-2 text-right ${base}`}>{r.submit}</td>
       <td className="px-3 py-2 text-right text-text-muted">
@@ -160,12 +158,13 @@ export default async function AdminMetricsPage({
 
   const m = await loadMetrics();
   const s = m.summary;
-  const clickTotal = s.clickSubscribe + s.clickTry;
 
   return (
     <main className="mx-auto max-w-3xl p-4 sm:p-6">
       <header className="mb-6">
-        <h1 className="text-xl font-semibold text-text">수요 지표 대시보드</h1>
+        <h1 className="text-xl font-semibold text-text">
+          Senior Scheduler 수요 지표 대시보드
+        </h1>
         <p className="mt-1 text-sm text-text-muted">
           설문·링크로 유입된 방문자가 어디까지 반응했는지 보여 드립니다. 아래 숫자는
           테스트 유입(<span className="font-medium">test</span>)을 제외한 실제
@@ -178,12 +177,12 @@ export default async function AdminMetricsPage({
         <SummaryCard
           label="고유 방문자"
           value={`${s.visitors}명`}
-          sub="랜딩을 본 서로 다른 방문자 수"
+          sub="랜딩(/)을 본 서로 다른 방문자 수"
         />
         <SummaryCard
-          label="버튼 클릭"
-          value={`${clickTotal}회`}
-          sub={`구독 ${s.clickSubscribe} · 베타 ${s.clickTry}`}
+          label="사전등록 클릭"
+          value={`${s.clickTry}회`}
+          sub={`사전등록 페이지 진입 · 클릭률 ${pct(s.clickTry, s.visitors)}`}
         />
         <SummaryCard
           label="대기자"
@@ -205,18 +204,18 @@ export default async function AdminMetricsPage({
         <ol className="space-y-2 text-sm text-text-muted">
           <li>
             <span className="font-medium text-text">① 페이지 방문</span>{" "}
-            <span className="text-xs">(VIEW)</span> — 랜딩에 도착해 서비스를 봤습니다.
+            <span className="text-xs">(랜딩 /)</span> — 랜딩에 도착해 서비스를 봤습니다.
             같은 브라우저는 새로고침해도 1회만 셉니다.
           </li>
           <li>
-            <span className="font-medium text-text">② 버튼 클릭</span>{" "}
-            <span className="text-xs">(구독하기 · 베타 사용해보기)</span> — 가격·기능을
-            보고도 눌렀다는 관심 신호입니다.
+            <span className="font-medium text-text">② 사전등록 클릭</span>{" "}
+            <span className="text-xs">([사전등록하기] → /preregister 진입)</span> —
+            사전등록 페이지로 넘어갔다는 관심 신호입니다.
           </li>
           <li>
             <span className="font-medium text-text">③ 이메일 제출</span>{" "}
-            <span className="text-xs">(WAITLIST_SUBMIT)</span> — 대기자로 이메일을
-            남겼습니다. 가장 강한 수요 신호입니다.
+            <span className="text-xs">(/preregister에서 대기자 등록)</span> — 대기자로
+            이메일을 남겼습니다. 가장 강한 수요 신호입니다.
           </li>
         </ol>
       </section>
@@ -232,8 +231,7 @@ export default async function AdminMetricsPage({
               <tr>
                 <Th align="left">유입 채널</Th>
                 <Th>방문</Th>
-                <Th>구독 클릭</Th>
-                <Th>베타 클릭</Th>
+                <Th>사전등록 클릭</Th>
                 <Th>클릭률</Th>
                 <Th>이메일 제출</Th>
                 <Th>전환율</Th>
@@ -244,7 +242,7 @@ export default async function AdminMetricsPage({
                 <tr>
                   <td
                     className="px-3 py-6 text-center text-text-muted"
-                    colSpan={7}
+                    colSpan={6}
                   >
                     아직 수집된 방문이 없습니다.
                   </td>
@@ -259,7 +257,7 @@ export default async function AdminMetricsPage({
           </table>
         </div>
         <ul className="mt-2 space-y-1 text-xs text-text-muted">
-          <li>· 클릭률 = (구독 클릭 + 베타 클릭) ÷ 방문. 전환율 = 이메일 제출 ÷ 방문.</li>
+          <li>· 클릭률 = 사전등록 클릭(사전등록 페이지 진입) ÷ 방문. 전환율 = 이메일 제출 ÷ 방문.</li>
           <li>· utm_source가 없는 유입은 &quot;(직접)&quot;으로 표시됩니다.</li>
           <li>· &quot;테스트 유입&quot; 줄은 본인·팀 테스트(test)로, 위 합계·요약에서 제외됩니다.</li>
         </ul>
@@ -276,7 +274,7 @@ export default async function AdminMetricsPage({
               <tr>
                 <Th align="left">날짜</Th>
                 <Th>방문</Th>
-                <Th>클릭</Th>
+                <Th>사전등록 클릭</Th>
                 <Th>제출</Th>
               </tr>
             </thead>
