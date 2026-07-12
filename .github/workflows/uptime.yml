@@ -1,0 +1,57 @@
+name: uptime-monitor
+
+# 프로덕션 사이트 생존 점검 (10분 주기, GitHub Actions 무료).
+# 랜딩/사전등록 페이지가 200이 아니면 GitHub Issue를 자동 생성한다
+# → 저장소 소유자(spacetravr)에게 GitHub 알림 메일이 간다.
+# 참고: schedule은 best-effort라 실제 간격은 10~20분까지 늘어질 수 있음.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check production routes
+        run: |
+          fail=0
+          for u in "https://seniorscheduler.vercel.app/" "https://seniorscheduler.vercel.app/preregister"; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "$u" || echo 000)
+            echo "$u -> $code"
+            if [ "$code" != "200" ]; then
+              echo "FAILED_URL=$u" >> "$GITHUB_ENV"
+              echo "FAILED_CODE=$code" >> "$GITHUB_ENV"
+              fail=1
+            fi
+          done
+          exit $fail
+
+      - name: Open issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const open = await github.rest.issues.listForRepo({
+              ...context.repo, state: "open", labels: "uptime",
+            });
+            if (open.data.length > 0) return; // 이미 열린 장애 이슈가 있으면 중복 생성 안 함
+            await github.rest.issues.create({
+              ...context.repo,
+              title: `🚨 사이트 응답 이상: ${process.env.FAILED_URL} (HTTP ${process.env.FAILED_CODE})`,
+              labels: ["uptime"],
+              body: [
+                "자동 모니터링(10분 주기)이 프로덕션 비정상 응답을 감지했습니다.",
+                "",
+                `- URL: ${process.env.FAILED_URL}`,
+                `- 응답 코드: ${process.env.FAILED_CODE}`,
+                `- 감지 시각(UTC): ${new Date().toISOString()}`,
+                "",
+                "확인 순서: ① 브라우저에서 직접 접속 ② Vercel 대시보드 Deployments/Logs ③ https://www.vercel-status.com ④ Supabase status",
+                "복구 확인 후 이 이슈를 닫아 주세요 (닫기 전까지 중복 이슈는 생성되지 않습니다).",
+              ].join("\n"),
+            });
