@@ -19,4 +19,8 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
+  /* 한국어 줄바꿈: 단어(어절) 중간에서 자르지 않고 공백 기준으로만 개행.
+     넘치는 단어는 자르지 말고 통째로 다음 줄로 — 전 화면 공통. */
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
