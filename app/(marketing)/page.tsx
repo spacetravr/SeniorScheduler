@@ -63,7 +63,7 @@ export default function LandingPage() {
         {/* 히어로 */}
         <section className="bg-gradient-to-b from-surface to-bg">
           <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-5 py-16 sm:px-8 lg:flex-row lg:gap-14 lg:py-24">
-            <div className="flex flex-1 flex-col items-center gap-6 text-center lg:items-start lg:text-left">
+            <div className="flex flex-1 flex-col items-center gap-6 text-center">
               <span className="rounded-base bg-accent/15 px-3 py-1 text-sm font-semibold text-accent">
                 Senior Scheduler
               </span>
@@ -89,12 +89,12 @@ export default function LandingPage() {
             <div className="w-full flex-1">
               <div className="relative mx-auto aspect-[4/5] w-full max-w-md overflow-hidden rounded-base shadow-sm sm:max-w-lg">
                 <Image
-                  src="/images/hero-senior-man.jpg"
+                  src="/images/hero-senior-man2.jpg"
                   alt="전화를 받으며 환하게 웃고 계신 아버님"
                   fill
                   priority
                   sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover object-[35%_center]"
+                  className="object-cover object-[40%_center]"
                 />
               </div>
             </div>
