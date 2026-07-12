@@ -34,29 +34,29 @@ export function PreregisterForm() {
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface text-3xl">
           🎉
         </div>
-        <h2 className="text-xl font-bold">사전등록이 완료되었습니다</h2>
-        <p className="max-w-xs text-sm leading-relaxed text-text-muted">
+        <h2 className="text-2xl font-bold">사전등록이 완료되었습니다</h2>
+        <p className="max-w-xs text-base leading-relaxed text-text-muted">
           정식 출시 소식을 이메일로 가장 먼저 보내드릴게요. 소중한 관심에
           감사드립니다.
         </p>
-        <p className="text-sm font-medium text-primary">{email.trim()}</p>
+        <p className="text-base font-medium text-primary">{email.trim()}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-5 rounded-base border border-surface bg-bg p-6 shadow-sm sm:p-8">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-xl font-bold">이메일로 사전등록</h2>
-        <p className="text-sm leading-relaxed text-text-muted">
+    <div className="flex flex-col gap-5 rounded-base border border-surface bg-bg p-6 text-center shadow-sm sm:p-8">
+      <div className="flex flex-col items-center gap-2">
+        <h2 className="text-2xl font-bold">이메일로 사전등록</h2>
+        <p className="text-base leading-relaxed text-text-muted">
           이메일 한 줄이면 준비 완료입니다. 정식 출시되면 가장 먼저 안내
           메일을 보내드릴게요.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="preregister-email" className="text-sm font-medium">
+          <label htmlFor="preregister-email" className="text-base font-medium">
             이메일 주소
           </label>
           <input
@@ -68,15 +68,15 @@ export function PreregisterForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onBlur={() => setTouched(true)}
-            className="w-full rounded-base border border-surface bg-surface px-4 py-3.5 text-base text-text outline-none focus:border-primary"
+            className="w-full rounded-base border border-surface bg-surface px-4 py-3.5 text-lg text-text outline-none focus:border-primary"
           />
           {touched && !emailValid && (
-            <p className="px-1 text-sm text-accent">
+            <p className="px-1 text-base text-accent">
               올바른 이메일 주소를 입력해 주세요.
             </p>
           )}
           {status === "error" && (
-            <p className="px-1 text-sm text-accent">
+            <p className="px-1 text-base text-accent">
               잠시 문제가 있었어요. 잠시 후 다시 시도해 주세요.
             </p>
           )}
@@ -85,13 +85,13 @@ export function PreregisterForm() {
         <button
           type="submit"
           disabled={status === "submitting"}
-          className="w-full rounded-base bg-primary px-6 py-4 text-base font-semibold text-bg shadow-sm transition-opacity hover:opacity-90 disabled:opacity-60"
+          className="w-full rounded-base bg-primary px-6 py-4 text-lg font-semibold text-bg shadow-sm transition-opacity hover:opacity-90 disabled:opacity-60"
         >
           {status === "submitting" ? "등록 중..." : "사전등록 완료하기"}
         </button>
       </form>
 
-      <ul className="flex flex-col gap-1.5 border-t border-surface pt-4 text-xs leading-relaxed text-text-muted">
+      <ul className="flex flex-col gap-1.5 border-t border-surface pt-4 text-left text-sm leading-relaxed text-text-muted">
         <li>· 이메일은 출시 안내 목적으로만 사용됩니다.</li>
         <li>· 결제 정보를 요구하지 않습니다.</li>
         <li>· 안내 메일은 언제든 수신 거부하실 수 있습니다.</li>

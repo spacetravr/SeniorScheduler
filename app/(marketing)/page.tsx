@@ -89,8 +89,8 @@ export default function LandingPage() {
             <div className="w-full flex-1">
               <div className="relative mx-auto aspect-[4/5] w-full max-w-md overflow-hidden rounded-base shadow-sm sm:max-w-lg">
                 <Image
-                  src="/images/hero-call.jpg"
-                  alt="전화를 받으며 밝게 웃고 계신 어머님"
+                  src="/images/hero-call-2.jpg"
+                  alt="창가에서 전화를 받으며 환하게 웃고 계신 어머님"
                   fill
                   priority
                   sizes="(max-width: 1024px) 100vw, 50vw"
@@ -198,17 +198,17 @@ export default function LandingPage() {
         </section>
 
         {/* 마지막 CTA 배너 */}
-        <section className="bg-primary">
-          <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-5 py-16 text-center sm:px-8 sm:py-20">
-            <h2 className="text-3xl font-bold leading-tight tracking-tight text-bg sm:text-4xl">
+        <section className="px-5 py-16 sm:px-8 sm:py-20">
+          <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 rounded-base border border-primary/15 bg-primary/5 px-5 py-14 text-center sm:px-8 sm:py-16">
+            <h2 className="text-3xl font-bold leading-tight tracking-tight text-text sm:text-4xl">
               오늘부터 부모님께
               <br className="sm:hidden" /> 따뜻한 전화를 시작해 보세요
             </h2>
-            <p className="max-w-xl text-lg leading-relaxed text-bg/80">
+            <p className="max-w-xl text-lg leading-relaxed text-text-muted">
               정식 출시되면 이메일로 가장 먼저 안내드릴게요.
             </p>
             <div className="w-full sm:w-auto">
-              <PreregisterButton variant="outline" />
+              <PreregisterButton />
             </div>
           </div>
         </section>
