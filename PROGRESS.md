@@ -19,6 +19,12 @@
 - **관리자 지표 개편** (data-api `feat/data-metrics-v2` → reviewer PASS → 머지 3dc1da1): 퍼널을 방문→사전등록 클릭(페이지 진입)→이메일 제출 3단계로 재정의, CLICK_SUBSCRIBE 완전 제거(잔존 데이터는 집계에서 방어적 무시), USER_CHECK.md 새 구조로 재작성
 - 통합 main: `npm test` 209/209, 빌드 통과 → **`vercel deploy --prod` 배포 + 프로덕션 스모크 통과** (전 라우트 200, 구 도메인 308, CTA/waitlist API 실데이터 E2E 검증 후 테스트 데이터 삭제)
 
+### 완료 (배포 후 피드백 반영 — 2026-07-12 저녁)
+- **피드백 4건** (ui-builder `feat/ui-landing-tweaks` → reviewer PASS → 머지): CTA 배너 톤다운(bg-primary/5 틴트), /preregister 좌우 중앙 정렬 + 글씨 한 단계 확대, 히어로 사진 교체
+- **히어로 사진 최종**: 사용자 제공 이미지(`/images/hero-senior-man.jpg`, 통화 중 웃는 시니어 남성)로 확정. 가로 원본이라 4:5 크롭 + object-position 35% 조정
+  - ⚠️ **라이선스 미확인** (출처 불명 다운로드 파일, 워터마크 없음). 베타 검증용으로 사용 중 — **정식 출시 전 라이선스 확정 이미지로 교체 필요**. 이전 후보(Unsplash 무료: hero-call/hero-call-2/hero-korean)는 public/images/에 보존됨
+- 프로덕션 반영 확인 완료. **설문 배포 가능 상태.**
+
 ### 다음 할 일
 1. **설문 배포 전 잔여**: ADMIN_PASSWORD 변경(현 vs-beta-2026), 설문용 utm 링크 확정(`https://seniorscheduler.vercel.app/?utm_source=survey` 등), OG 썸네일 카톡 미리보기 확인
 2. **사용자 수동**: Supabase Auth Site URL/Redirect URLs를 `https://seniorscheduler.vercel.app` 기준으로 갱신 (magic link 보조 로그인용)
