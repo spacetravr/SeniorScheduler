@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const SITE_NAME = "Senior Scheduler";
@@ -41,6 +42,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-bg text-text font-sans antialiased">
         {children}
+        <Analytics />
       </body>
     </html>
   );
