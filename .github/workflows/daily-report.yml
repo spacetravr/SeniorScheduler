@@ -1,0 +1,62 @@
+name: daily-report
+
+# 매일 1회 데이터 수집 현황(CTA 퍼널·waitlist) 리포트를 GitHub Issue로 발행한다.
+# 이슈 생성 → 저장소 소유자에게 GitHub 알림 메일 발송 (uptime.yml과 동일한 알림 경로).
+# 매일 1개만 열려 있도록, 생성 전 기존 daily-report 라벨의 열린 이슈를 모두 닫는다.
+
+on:
+  schedule:
+    # KST 09:00 발행 → UTC로는 -9h = 00:00 (CLAUDE.md 시간대 규칙: cron은 UTC 해석)
+    - cron: "0 0 * * *"
+  workflow_dispatch: # 수동 테스트용
+
+permissions:
+  issues: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Generate report markdown
+        id: gen
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          REPORT_OUT: daily-report.md
+        run: node .github/scripts/daily-report.mjs
+
+      - name: Publish issue (close previous, open today's)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const body = fs.readFileSync("daily-report.md", "utf8");
+            const title = process.env.REPORT_TITLE
+              || body.split("\n")[0].replace(/^#\s*/, "").trim();
+
+            // 기존에 열려 있는 daily-report 이슈를 모두 닫는다 (매일 1개만 유지).
+            const open = await github.rest.issues.listForRepo({
+              ...context.repo, state: "open", labels: "daily-report", per_page: 100,
+            });
+            for (const issue of open.data) {
+              await github.rest.issues.update({
+                ...context.repo, issue_number: issue.number, state: "closed",
+              });
+            }
+
+            await github.rest.issues.create({
+              ...context.repo,
+              title,
+              labels: ["daily-report"],
+              body,
+            });
+        env:
+          REPORT_TITLE: ${{ steps.gen.outputs.title }}
