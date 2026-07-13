@@ -6,6 +6,34 @@
 
 ---
 
+## 2026-07-13 — 세션 #5: 도구·자동화 A항목 + 일일 지표 리포트 (병렬 에이전트 3개로 수행)
+
+### 완료
+- **일일 지표 리포트 자동화 (사용자 요청)**: `.github/workflows/daily-report.yml` + `.github/scripts/daily-report.mjs` — 매일 **09:00 KST**(cron `0 0 * * *` UTC) Supabase에서 퍼널(VIEW→CLICK_TRY→WAITLIST_SUBMIT)·채널별·waitlist 집계 → GitHub Issue 발행(라벨 daily-report, 기존 열린 이슈 자동 close) → **소유자에게 GitHub 알림 메일** (uptime.yml과 동일 경로). email(PII) 미조회, test 제외, 집계 정의는 admin/metrics lib.ts와 일치. workflow_dispatch 수동 실행으로 E2E 검증 완료 (이슈 #1 발행 확인)
+- **GitHub Actions 시크릿 등록**: SUPABASE_URL, SUPABASE_SECRET_KEY (gh CLI 2.96 winget 설치 + git credential manager의 OAuth 토큰으로 인증)
+- **도구 로드맵 A항목**: ① Playwright MCP `.mcp.json` 등록 (⚠️ 다음 세션 재시작부터 로드됨) ② `/smoke` 스킬 (공개 플로우는 prod 허용·test 데이터 청소 포함, 인증 플로우는 로컬 전용) ③ `/ship` 스킬 (reviewer→머지→테스트→push→vercel prod→스모크→PROGRESS 리마인드) ④ **Vercel Web Analytics** `@vercel/analytics@2.0.1` 루트 레이아웃 `<Analytics />` (import 경로 `@vercel/analytics/next`, 설치는 --legacy-peer-deps 필요했음)
+- reviewer PASS (머지 c365f4c → main push) + `vercel deploy --prod` 배포
+- ⚠️ 사고·복구 2건 (결과 무손실): ① reviewer가 검토 중 `git checkout 3dda1 -- .`로 워킹트리 일시 되돌림 → 바이트 단위 복원 확인 ② 오케스트레이터가 PowerShell Set-Content로 daily-report.mjs 한글 인코딩 깨뜨림 → UTF-8 전체 재작성 후 실행 재검증
+
+### 발견사항 (다음 작업에 중요)
+- **셀프 테스트 데이터가 이미 존재**: cta_events 방문 3·클릭 2·제출 2, waitlist 2 (2026-07-12, **utm_source 전부 null=직접 유입** — `?utm_source=test` 링크가 아니라 일반 주소로 테스트한 것으로 보임). 다음 할 일 1번(확인 후 초기화)에서 처리할 것
+- **테스트 개수 정정**: 실제 스위트는 **6파일 72개** (reviewer가 vitest 파일 목록으로 확인). 세션 #4의 "209/209"는 오기
+
+### 다음 할 일 (사용자 수동 2건 포함)
+1. **Vercel 대시보드에서 Web Analytics Enable** (사용자 수동: vercel.com → seniorscheduler 프로젝트 → Analytics 탭 → Enable. 코드는 배포됨, 반영까지 ~1h)
+2. **일일 리포트 메일 수신 확인** (사용자: GitHub 알림 메일함 확인 — 안 오면 github.com/settings/notifications에서 Participating/Watching 이메일 켜기)
+3. 이후 기존 우선순위 그대로: 셀프테스트 확인·초기화 → ADMIN_PASSWORD 변경 → OG 확인 → 링크 배포
+
+### 결정사항
+- 일일 리포트 전달 경로: **GitHub Issue → 알림 메일** (별도 SMTP/Resend 없이. 특정 이메일 주소로 직접 발송 원하면 SMTP 연동 별도 작업)
+- gh CLI 2.96 도입 (winget). Vercel CLI 55는 기존 그대로 (세션 시작 훅의 "미설치" 경고는 오탐)
+- 스킬 도입 기록 (버전): `/smoke` v1, `/ship` v1 (2026-07-13), Playwright MCP `@playwright/mcp@latest` (npx)
+
+### 블로커
+- 없음
+
+---
+
 ## 2026-07-12 — 세션 #4: 랜딩 v2 (Senior Scheduler 리브랜딩 + 2페이지 사전등록) 배포 완료
 
 ### 완료
