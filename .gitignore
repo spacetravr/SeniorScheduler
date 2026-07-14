@@ -29,5 +29,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# playwright mcp 산출물 (스냅샷·스크린샷·콘솔 로그)
+.playwright-mcp/
+
 .vercel
 .env*
