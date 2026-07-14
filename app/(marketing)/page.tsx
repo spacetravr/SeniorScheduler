@@ -89,12 +89,12 @@ export default function LandingPage() {
             <div className="w-full flex-1">
               <div className="relative mx-auto aspect-[4/5] w-full max-w-md overflow-hidden rounded-base shadow-sm sm:max-w-lg">
                 <Image
-                  src="/images/hero-senior-man2.jpg"
-                  alt="전화를 받으며 환하게 웃고 계신 아버님"
+                  src="/images/hero-senior-couple.jpg"
+                  alt="전화를 받으며 환하게 웃고 계신 어머님과 아버님"
                   fill
                   priority
                   sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover object-[40%_center]"
+                  className="object-cover object-[62%_center]"
                 />
               </div>
             </div>
