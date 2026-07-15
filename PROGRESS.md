@@ -34,6 +34,12 @@
 - **CLOVA AiCall 조사**: 제휴 불필요 — NCP 콘솔 셀프 신청(Object Storage+CLOVA Chatbot 선행 → Contact Center(Outbound) → 번호 등록(기존 번호는 통신서비스 이용증명원) → 시나리오 → 캠페인). 요금 비공개(문의 필요). ⚠️ 발신이 캠페인(일괄) 단위 — "예약 시각 1건 발신" 모델과 맞는지 가입 후 첫 검증 항목. [사용자] NCP 가입+상품 신청
 - **결정**: 음성클립 정책 = 전사만 유지(저장 인프라·법적 표면 최소화, 오케스트레이터 결정) / 벤더 방향 = CLOVA AiCall / 법률 자문 보류(사용자 — 단 실발신 전 확인 권고 고지됨) / LLM = 우선 Gemini(CLAUDE.md의 Anthropic 고정에서 사용자 지시로 이탈, 추상화로 교체 용이)
 
+### 완료 (세션 #7 — 실벤더 텔레포니 계층)
+- **벤더 중립 실벤더 연동 계층** (data-api worktree → reviewer PASS(회귀 중점) → 머지 f7f8647 → 배포·스모크 PASS): `TELEPHONY_PROVIDER=mock|clova` 선택(clova 설정 미비 시 발신 skip — 조용한 폴백 금지) / ClovaAdapter 스켈레톤(HTTP TODO) / 벤더 중립 콜백 zod 계약 + `/api/telephony/callback`(Bearer 시크릿, 미설정 시 503 비활성 — 현 프로덕션 상태) / 상태전이·재시도(next_attempt_at, 1분/10분→MISSED)·멱등 / run-call에서 분류·리포트·동의판정 함수 추출(mock·콜백 공유, 기존 테스트 무수정 통과) / async 디스패치 모드+재시도 스캔 / 0005 마이그레이션 / docs/telephony-clova.md(계정 후 체크리스트+확정 질문 6개). 테스트 **224/224**
+- ⚠️ **0005 마이그레이션 미실행** (next_attempt_at 컬럼 — 실벤더 모드·재시도 스캔 전 필수, mock 동기 경로는 무관하나 디스패치의 재시도 스캔 쿼리가 컬럼 참조하므로 **디스패치 사용 전 실행 필요**)
+- TELEPHONY_CALLBACK_SECRET 미등록 (권한 정책상 사용자 승인 필요 — 벤더 확정 시 등록하면 됨, 그 전까지 콜백 503이 안전)
+- CLOVA 확정 시 남는 작업: clova triggerCall HTTP 구현 / clova 콜백 파서 / (필요 시) provider_call_id 0006 / 콜백 URL 벤더 등록 + 스테이징 e2e
+
 ### 교훈
 - ui-builder가 worktree 밖(메인 트리)에서 npm install 실행해 package.json 로컬 변경 발생 → 머지 블록. **worktree 에이전트 지시문에 "npm install도 worktree 안에서" 명시할 것**
 
