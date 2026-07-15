@@ -16,8 +16,10 @@
 - 통합 main: tsc·**테스트 134/134**·빌드 통과 (테스트 수 기준선: 71→134)
 - ⚠️ 병렬 에이전트 사고 예방 1건: 같은 워킹트리에서 ui-builder가 브랜치 전환 → data-api 미커밋 작업물 노출. SendMessage로 커밋 절차 지시해 무사고 수습. **다음부터 병렬 에이전트는 git worktree 격리 필수**
 
-### 🚨 배포 게이트 (순서 중요)
-- **0003 마이그레이션 실행 전에 prod 배포 금지** — queries의 SENIOR_COLS가 self_consent_at을 조회하므로 컬럼 없는 prod DB에 배포하면 /app/seniors 깨짐. 순서: ①0003 실행 → ②배포
+### ✅ 배포 완료 (2026-07-15 오후)
+- 0003 마이그레이션 적용 확인(사용자 실행, REST로 테이블·컬럼 검증) → CRON_SECRET·DISPATCH_URL 등록(오케스트레이터가 gh/vercel CLI로 처리, .env.local에도 CRON_SECRET 추가) → `vercel deploy --prod` → **프로덕션 스모크 전 항목 PASS** (랜딩·preregister·CTA 204·waitlist 201·테스트행 삭제·admin 200·디스패치 무인증 401)
+- **⚠️ call-dispatch 워크플로는 `disabled_manually` 상태** (사용자 지시: "전화 기능 제외하고 배포") — Mock 발신이 프로덕션에서 돌지 않음. E2E 시작 시 `gh workflow enable call-dispatch.yml` 한 줄로 재활성화
+- 신형 sb_secret 키 주의: REST 호출 시 `apikey` 헤더만 사용 (`Authorization: Bearer`에 넣으면 JWT 파싱 실패로 401)
 
 ### 다음 할 일
 1. **[사용자]** Supabase SQL Editor에서 `supabase/migrations/0003_call_pipeline.sql` 실행
