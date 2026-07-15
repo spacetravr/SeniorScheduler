@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import type { Senior, Schedule } from "@/lib/contracts/domain";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { instanceOnKstDate, kstDateOf } from "@/lib/scheduling/occurrences";
-import { canDispatchScheduleCall } from "@/lib/calls/state-machine";
-import { runScheduleCall } from "@/lib/calls/run-call";
+import { canDispatchScheduleCall, canDispatchConsentCall } from "@/lib/calls/state-machine";
+import { isConsentSessionDue } from "@/lib/calls/consent-scheduling";
+import { runScheduleCall, runConsentCall } from "@/lib/calls/run-call";
 import { MockAdapter } from "@/lib/telephony/mock-adapter";
 import { createLlmClient } from "@/lib/ai/llm";
 
@@ -13,12 +14,17 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/cron/dispatch-calls  (5분 주기 GitHub Actions cron 이 호출)
  *
- * 동작: 현재 KST 시각 ±5분 윈도우에 발신 예정인 활성 일정을 찾아 MockAdapter 로 통화를
- * 실행하고 call_sessions/turns/reports 를 기록한다.
+ * 동작:
+ *   (1) SCHEDULE 콜: 현재 KST 시각 ±5분 윈도우에 발신 예정인 활성 일정을 찾아 MockAdapter 로
+ *       통화를 실행하고 call_sessions/turns/reports 를 기록한다.
+ *   (2) CONSENT 콜: seniors Server Action 이 예약한 due(SCHEDULED·scheduled_at<=now) 동의
+ *       세션을 runConsentCall 로 실행하고, 성사 시 seniors.self_consent_at 을 기록한다.
  *   - 인증: Authorization: Bearer ${CRON_SECRET}
  *   - 서버 write 는 admin(secret key, RLS 우회) — no-store fetch 규칙은 admin.ts 가 보장.
- *   - 발신 가드(가드레일 5): consent_at && self_consent_at 둘 다 있는 senior 만.
- *   - 중복 방지: 같은 schedule_id + 동일 scheduled_at 세션이 이미 있으면 스킵.
+ *   - 발신 가드(가드레일 5): SCHEDULE 은 consent_at && self_consent_at 둘 다,
+ *     CONSENT 는 consent_at 있고 self_consent_at 없을 때만(본인동의를 받으러 가는 콜).
+ *   - 중복 방지: SCHEDULE 은 같은 schedule_id + 동일 scheduled_at 세션 존재 시 스킵.
+ *     CONSENT 는 예약 단계(seniors.ts)에서 열린 세션 1개로 제한(0004 부분 unique).
  *
  * 시간대(CLAUDE.md): 발생 시각 계산은 lib/scheduling/occurrences.ts(Asia/Seoul 명시).
  */
@@ -180,5 +186,110 @@ export async function POST(req: Request) {
     dispatched += 1;
   }
 
-  return NextResponse.json({ dispatched, skipped, due });
+  // ── CONSENT(본인 동의) 콜 디스패치 ─────────────────────────────────────────────
+  // seniors Server Action 이 예약한 due(SCHEDULED · scheduled_at<=now) CONSENT 세션을
+  // 동의 콜 엔진(runConsentCall)으로 실행한다. 상태 기계·재시도(1분/10분→MISSED)는 엔진이
+  // 관장하며, 성사 시 seniors.self_consent_at 을 여기서 기록한다(엔진은 부수효과 없음).
+  let consentDispatched = 0;
+  let consentSkipped = 0;
+  let consentDue = 0;
+
+  const { data: consentRows, error: consentErr } = await supabase
+    .from("call_sessions")
+    .select("id, senior_id, status, scheduled_at, attempt")
+    .eq("purpose", "CONSENT")
+    .eq("status", "SCHEDULED")
+    .lte("scheduled_at", now.toISOString());
+  if (consentErr) {
+    console.error("[dispatch] consent sessions:", consentErr.code, consentErr.message);
+    return NextResponse.json({ error: "query_failed" }, { status: 500 });
+  }
+
+  const consentSessions = consentRows ?? [];
+  if (consentSessions.length > 0) {
+    // due 세션들의 senior 를 일괄 로드.
+    const cSeniorIds = Array.from(new Set(consentSessions.map((r) => r.senior_id as string)));
+    const { data: cSeniorRows, error: cSeniorErr } = await supabase
+      .from("seniors")
+      .select(
+        "id, name, phone, relationship, birth_year, consent_at, consent_by, self_consent_at, created_at",
+      )
+      .in("id", cSeniorIds);
+    if (cSeniorErr) {
+      console.error("[dispatch] consent seniors:", cSeniorErr.code, cSeniorErr.message);
+      return NextResponse.json({ error: "query_failed" }, { status: 500 });
+    }
+    const cSeniorById = new Map((cSeniorRows ?? []).map((s) => [s.id, s as Senior]));
+
+    for (const session of consentSessions) {
+      // 순수 due 판정(쿼리로 이미 좁혔지만 경계·상태를 명시적으로 재확인).
+      if (!isConsentSessionDue({ status: session.status, scheduled_at: session.scheduled_at }, now)) {
+        continue;
+      }
+      consentDue += 1;
+
+      const senior = cSeniorById.get(session.senior_id as string);
+      // 발신 가드(가드레일 5): CONSENT 콜은 대리동의 있음 && 본인동의 없음일 때만.
+      // (이미 본인동의를 받았거나 대리동의가 철회됐으면 스킵 — 세션은 그대로 둔다.)
+      if (!senior || !canDispatchConsentCall(senior)) {
+        consentSkipped += 1;
+        continue;
+      }
+
+      const sessionId = session.id as string;
+      const result = await runConsentCall({
+        sessionId,
+        senior,
+        adapter: new MockAdapter(),
+        clock: () => new Date(now.getTime()),
+      });
+
+      // 세션 종료 상태 반영(cost_krw 포함).
+      await supabase
+        .from("call_sessions")
+        .update({
+          status: result.status,
+          attempt: result.attempt,
+          started_at: result.startedAt,
+          ended_at: result.endedAt,
+          cost_krw: result.costKrw,
+        })
+        .eq("id", sessionId);
+
+      // 턴 저장(있으면). CONSENT 콜은 리포트를 만들지 않는다(일정 이행 판정 대상 아님).
+      if (result.turns.length > 0) {
+        await supabase.from("call_turns").insert(
+          result.turns.map((t) => ({
+            session_id: sessionId,
+            role: t.role,
+            input_kind: t.input_kind,
+            text: t.text,
+            created_at: t.at,
+          })),
+        );
+      }
+
+      // 본인 동의 성사 → seniors.self_consent_at 기록(엔진이 판정, 기록은 라우트 몫).
+      if (result.consentGranted && result.endedAt) {
+        const { error: upErr } = await supabase
+          .from("seniors")
+          .update({ self_consent_at: result.endedAt })
+          .eq("id", senior.id);
+        if (upErr) {
+          console.error("[dispatch] self_consent update:", upErr.code, upErr.message);
+        }
+      }
+
+      consentDispatched += 1;
+    }
+  }
+
+  return NextResponse.json({
+    dispatched,
+    skipped,
+    due,
+    consentDispatched,
+    consentSkipped,
+    consentDue,
+  });
 }

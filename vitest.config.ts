@@ -7,6 +7,10 @@ import { fileURLToPath } from "node:url";
  *  참조하므로 alias 가 필요하다. 새 npm 의존성 아님 — vitest 내장 config.)
  */
 export default defineConfig({
+  test: {
+    // worktree 병렬 작업 시 하위 worktree 의 동일 테스트가 이중 집계되는 것 방지.
+    exclude: ["**/node_modules/**", "**/dist/**", ".claude/worktrees/**"],
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./", import.meta.url)),
