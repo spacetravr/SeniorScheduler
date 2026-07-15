@@ -3,16 +3,20 @@
 @tailwind utilities;
 
 /* ── 디자인 토큰 단일 소스 (CLAUDE.md `## 디자인 토큰`과 동기화) ──
-   placeholder — Claude Design 확정값이 오면 이 블록만 교체하면 전체 반영. */
+   확정 팔레트: "따뜻함 + 신뢰" — 딥 네이비(신뢰) + 웜 크림(따뜻) + 테라코타(강조).
+   시니어 돌봄 서비스 톤. 리스킨 시 이 블록만 교체하면 전체 반영. */
 :root {
-  --color-primary: #2563eb;   /* TODO: Claude Design 확정값으로 교체 */
-  --color-accent: #f59e0b;
-  --color-bg: #ffffff;
-  --color-surface: #f8fafc;
-  --color-text: #0f172a;
-  --color-text-muted: #64748b;
-  --radius-base: 12px;
+  --color-primary: #1E3A5F;       /* 딥 네이비 — 신뢰. 모든 CTA·강조 표면의 기본색 */
+  --color-primary-soft: #EAF0F7;  /* 네이비 연한 틴트 — soft 배경(CTA 배너 등) */
+  --color-accent: #C2410B;        /* 웜 테라코타 — 따뜻한 강조·경고. 본문 대비 AA 통과 */
+  --color-bg: #FBF7F0;            /* 웜 화이트 — 페이지·카드 표면 */
+  --color-surface: #F0E7D8;       /* 소프트 베이지 — 교차 섹션·입력 필드 */
+  --color-border: #E7DBC8;        /* 웜 보더 — 카드·구분선 통일 */
+  --color-text: #263140;         /* 딥 잉크 네이비 — 본문(대비 11:1+) */
+  --color-text-muted: #6B5D4F;   /* 웜 토프 — 보조 텍스트(대비 5.5:1) */
+  --radius-base: 14px;
   --font-sans: 'Pretendard Variable', sans-serif;
+  --shadow-card: 0 1px 2px rgba(38, 49, 64, 0.04), 0 10px 30px -16px rgba(38, 49, 64, 0.18);
 }
 
 body {
