@@ -31,8 +31,8 @@ const ANTHROPIC_VERSION = "2023-06-01";
 
 // ── Gemini (백엔드 ②) ─────────────────────────────────────────────────────────
 /**
- * 기본 모델. 이 키에서 200 검증됨: gemini-2.5-flash, gemini-2.5-flash-lite.
- * (사용 불가: 1.5-flash, 2.0-flash). GEMINI_MODEL 로 오버라이드 가능.
+ * 기본 모델. GEMINI_MODEL 로 오버라이드 가능 — 계정/시점에 따라 사용 가능한
+ * 모델이 다르므로(구형 모델은 무료 쿼터 0일 수 있음) 429/404 시 모델명을 먼저 확인.
  */
 const GEMINI_DEFAULT_MODEL = "gemini-2.5-flash";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
