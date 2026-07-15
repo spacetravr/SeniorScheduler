@@ -40,6 +40,14 @@
 - TELEPHONY_CALLBACK_SECRET 미등록 (권한 정책상 사용자 승인 필요 — 벤더 확정 시 등록하면 됨, 그 전까지 콜백 503이 안전)
 - CLOVA 확정 시 남는 작업: clova triggerCall HTTP 구현 / clova 콜백 파서 / (필요 시) provider_call_id 0006 / 콜백 URL 벤더 등록 + 스테이징 e2e
 
+### 완료 (세션 #7 — ClawOps 실어댑터, 실콜 테스트 직전 상태)
+- **벤더 확정: ClawOps** (팀러너스, Twilio 호환 한국 전화 API — CLOVA AiCall은 콘솔 미노출로 도입 문의 중, 병행 트랙). 계정·키·발신번호 070-5275-3827 발급·검증 완료(numbers 200). Trial 무료 발신 10분/월
+- **ClawOps 실어댑터** (data-api → reviewer PASS(오발신 방지·보안 중점) → 머지 7ddc0d3 → 배포·보안 스모크 PASS): triggerCall(MachineDetection=Hangup) / VoiceML ARS+ 시나리오(`/api/telephony/voiceml` — SCHEDULE: 고지→안내→DTMF 1·2→재질문1회→기분질문 / CONSENT: 동의 1·2) / clawops 콜백 파서(음성사서함→부재) / 전사 best-effort(실패 시 DTMF 분류) / cost 단가(60원/분+전사10원/분)+LLM / HMAC 토큰 인증(timingSafeEqual) / 0006 provider_call_id. 테스트 **272/272**
+- env: CLAWOPS 4종+TELEPHONY_CALLBACK_SECRET을 .env.local+Vercel prod 등록. **TELEPHONY_PROVIDER는 미설정(mock) — 실발신 스위치는 테스트 승인 시만**
+- 0005 적용 확인(사용자 실행, REST 검증). **0006 실행 대기(사용자)** — 실콜 테스트 전 필수
+- 실콜 E2E 준비: 수신 번호는 비공개 메모리(clawops-e2e-test-setup.md — repo 커밋 금지). **사용자 지시: 발신은 "테스트 해" 승인 시만.** 절차·확인 목록은 docs/telephony.md 하단 + 메모리 참조
+- 후속(E2E 시 확인): VoiceML 태그 호환 / CallStatus 실값 매핑 보정 / X-Signature 서명 / 녹음 비활성화 옵션 / contracts에 provider_call_id·next_attempt_at 추가(reviewer 메모)
+
 ### 교훈
 - ui-builder가 worktree 밖(메인 트리)에서 npm install 실행해 package.json 로컬 변경 발생 → 머지 블록. **worktree 에이전트 지시문에 "npm install도 worktree 안에서" 명시할 것**
 
