@@ -12,7 +12,7 @@ export function NotifyToggle({
 }) {
   const [on, setOn] = useState(initial);
   return (
-    <div className="flex items-center justify-between gap-4 rounded-base border border-surface p-4">
+    <div className="flex items-center justify-between gap-4 rounded-base border border-border bg-bg p-4 shadow-card">
       <span className="text-sm font-medium">{label}</span>
       <button
         type="button"

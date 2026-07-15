@@ -9,7 +9,7 @@ import { useRef, useState, useTransition } from "react";
 import { updatePassword } from "@/lib/actions/auth";
 
 const inputClass =
-  "rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary";
+  "rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary";
 
 export function PasswordChangeForm() {
   const formRef = useRef<HTMLFormElement>(null);

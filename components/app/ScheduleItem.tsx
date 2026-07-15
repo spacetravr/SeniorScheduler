@@ -46,7 +46,7 @@ export function ScheduleItem({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-base border border-surface p-4">
+    <div className="flex flex-col gap-3 rounded-base border border-border bg-bg p-4 shadow-card">
       <div className="flex items-center gap-4">
         <span className="w-14 shrink-0 text-lg font-bold tabular-nums">
           {schedule.call_time}
@@ -70,7 +70,7 @@ export function ScheduleItem({
           type="button"
           onClick={() => setEditing(true)}
           disabled={pending}
-          className="rounded-base border border-surface px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+          className="rounded-base border border-border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-surface disabled:opacity-50"
         >
           수정
         </button>
@@ -78,7 +78,7 @@ export function ScheduleItem({
           type="button"
           onClick={handleDelete}
           disabled={pending}
-          className="rounded-base border border-surface px-3 py-1.5 text-xs font-semibold text-accent disabled:opacity-50"
+          className="rounded-base border border-border px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-surface disabled:opacity-50"
         >
           삭제
         </button>

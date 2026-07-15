@@ -3,6 +3,7 @@
  * 하단에 MEDICAL_DISCLAIMER 고정 표시(가드레일 1).
  */
 import Link from "next/link";
+import { ClipboardList, Frown, Stethoscope } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { AdherenceStatusBadge } from "@/components/app/StatusBadge";
 import { EmptyState } from "@/components/app/EmptyState";
@@ -33,7 +34,7 @@ export default async function ReportsPage() {
 
       {reports.length === 0 ? (
         <EmptyState
-          icon="📋"
+          icon={ClipboardList}
           title="아직 통화 리포트가 없습니다"
           description="통화가 완료되면 이행 상태와 요약 리포트가 여기에 표시됩니다."
         />
@@ -54,7 +55,7 @@ export default async function ReportsPage() {
               <Link
                 key={r.id}
                 href={session ? `/app/calls/${session.id}` : "/app/calls"}
-                className="flex flex-col gap-2 rounded-base border border-surface p-4 transition-colors hover:border-primary"
+                className="flex flex-col gap-2 rounded-base border border-border bg-bg p-4 shadow-card transition-colors hover:border-primary"
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="break-keep text-sm text-text-muted">
@@ -70,12 +71,14 @@ export default async function ReportsPage() {
                   <div className="flex gap-2 text-xs">
                     {r.mood_flag ? (
                       <span className="inline-flex items-center gap-1 rounded-base bg-surface px-2 py-1 font-medium text-accent">
-                        🙁 기분 살핌
+                        <Frown className="h-3.5 w-3.5" aria-hidden strokeWidth={2} />
+                        기분 살핌
                       </span>
                     ) : null}
                     {r.health_flag ? (
                       <span className="inline-flex items-center gap-1 rounded-base bg-surface px-2 py-1 font-medium text-accent">
-                        🩺 건강 신호
+                        <Stethoscope className="h-3.5 w-3.5" aria-hidden strokeWidth={2} />
+                        건강 신호
                       </span>
                     ) : null}
                   </div>

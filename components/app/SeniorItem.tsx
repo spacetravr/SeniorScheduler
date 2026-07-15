@@ -50,7 +50,7 @@ export function SeniorItem({ senior }: { senior: Senior }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-base border border-surface p-4">
+    <div className="flex flex-col gap-3 rounded-base border border-border bg-bg p-4 shadow-card">
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
@@ -85,7 +85,7 @@ export function SeniorItem({ senior }: { senior: Senior }) {
           type="button"
           onClick={handleConsent}
           disabled={pending}
-          className="rounded-base border border-surface px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+          className="rounded-base border border-border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-surface disabled:opacity-50"
         >
           {consented ? "동의 철회" : "동의 처리"}
         </button>
@@ -93,7 +93,7 @@ export function SeniorItem({ senior }: { senior: Senior }) {
           type="button"
           onClick={() => setEditing(true)}
           disabled={pending}
-          className="rounded-base border border-surface px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+          className="rounded-base border border-border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-surface disabled:opacity-50"
         >
           수정
         </button>
@@ -101,7 +101,7 @@ export function SeniorItem({ senior }: { senior: Senior }) {
           type="button"
           onClick={handleDelete}
           disabled={pending}
-          className="rounded-base border border-surface px-3 py-1.5 text-xs font-semibold text-accent disabled:opacity-50"
+          className="rounded-base border border-border px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-surface disabled:opacity-50"
         >
           삭제
         </button>

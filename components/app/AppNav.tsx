@@ -6,15 +6,23 @@
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  Home,
+  CalendarDays,
+  Phone,
+  ClipboardList,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
 
-type NavItem = { href: string; label: string; icon: string };
+type NavItem = { href: string; label: string; icon: LucideIcon };
 
 const NAV: NavItem[] = [
-  { href: "/app", label: "대시보드", icon: "🏠" },
-  { href: "/app/schedules", label: "일정", icon: "🗓️" },
-  { href: "/app/calls", label: "통화", icon: "📞" },
-  { href: "/app/reports", label: "리포트", icon: "📋" },
-  { href: "/app/settings", label: "설정", icon: "⚙️" },
+  { href: "/app", label: "대시보드", icon: Home },
+  { href: "/app/schedules", label: "일정", icon: CalendarDays },
+  { href: "/app/calls", label: "통화", icon: Phone },
+  { href: "/app/reports", label: "리포트", icon: ClipboardList },
+  { href: "/app/settings", label: "설정", icon: Settings },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -25,21 +33,22 @@ function isActive(pathname: string, href: string): boolean {
 export function DesktopSidebar() {
   const pathname = usePathname();
   return (
-    <aside className="hidden w-56 shrink-0 flex-col gap-1 border-r border-surface p-4 md:flex">
+    <aside className="hidden w-56 shrink-0 flex-col gap-1 border-r border-border p-4 md:flex">
       <Link href="/app" className="mb-4 px-2 text-lg font-bold">
         Senior Scheduler
       </Link>
       {NAV.map((item) => {
         const active = isActive(pathname, item.href);
+        const Icon = item.icon;
         return (
           <Link
             key={item.href}
             href={item.href}
-            className={`flex items-center gap-3 rounded-base px-3 py-2.5 text-sm font-medium ${
+            className={`flex items-center gap-3 rounded-base px-3 py-2.5 text-sm font-medium transition-colors ${
               active ? "bg-primary text-bg" : "text-text-muted hover:bg-surface"
             }`}
           >
-            <span aria-hidden>{item.icon}</span>
+            <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden strokeWidth={2} />
             {item.label}
           </Link>
         );
@@ -51,20 +60,19 @@ export function DesktopSidebar() {
 export function MobileTabBar() {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-surface bg-bg md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-bg md:hidden">
       {NAV.map((item) => {
         const active = isActive(pathname, item.href);
+        const Icon = item.icon;
         return (
           <Link
             key={item.href}
             href={item.href}
-            className={`flex flex-col items-center gap-1 py-2 text-xs font-medium ${
+            className={`flex flex-col items-center gap-1 py-2 text-xs font-medium transition-colors ${
               active ? "text-primary" : "text-text-muted"
             }`}
           >
-            <span className="text-lg" aria-hidden>
-              {item.icon}
-            </span>
+            <Icon className="h-5 w-5 shrink-0" aria-hidden strokeWidth={2} />
             {item.label}
           </Link>
         );
