@@ -8,7 +8,13 @@ import {
   adherenceStatusLabel,
   type CallSession,
   type CallReport,
+  type Senior,
 } from "@/lib/contracts/domain";
+import {
+  getConsentStatus,
+  consentStatusLabel,
+  type ConsentStatus,
+} from "@/components/app/consent";
 
 type Tone = "neutral" | "info" | "active" | "success" | "warn" | "postpone" | "uncertain" | "missed";
 
@@ -47,6 +53,15 @@ const ADHERENCE_TONE: Record<CallReport["adherence_status"], Tone> = {
   MISSED: "missed",
 };
 
+const CONSENT_TONE: Record<ConsentStatus, Tone> = {
+  // 대리동의 없음: 조치 필요 (accent 외곽선)
+  NONE: "uncertain",
+  // 본인 동의 대기: 진행 중 (primary 외곽선)
+  SELF_PENDING: "postpone",
+  // 동의 완료: primary 채움
+  DONE: "success",
+};
+
 function Badge({ label, tone }: { label: string; tone: Tone }) {
   return (
     <span
@@ -67,4 +82,14 @@ export function AdherenceStatusBadge({
   status: CallReport["adherence_status"];
 }) {
   return <Badge label={adherenceStatusLabel[status]} tone={ADHERENCE_TONE[status]} />;
+}
+
+/** 동의 상태 뱃지 — 대리동의(consent_at) + 본인 동의(self_consent_at) 2단계 판정. */
+export function ConsentBadge({
+  senior,
+}: {
+  senior: Pick<Senior, "consent_at" | "self_consent_at">;
+}) {
+  const status = getConsentStatus(senior);
+  return <Badge label={consentStatusLabel[status]} tone={CONSENT_TONE[status]} />;
 }
