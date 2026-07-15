@@ -1,5 +1,5 @@
 /**
- * 통화 상세 (/app/calls/[id]) — 통화 턴 전사 타임라인 + 연결된 리포트.
+ * 통화 상세 (/app/calls/[id]) — 통화 턴 전사 타임라인 + 연결된 리포트 (실데이터).
  * 리포트가 있으면 하단에 MEDICAL_DISCLAIMER 고정 표시(가드레일 1).
  */
 import Link from "next/link";
@@ -12,30 +12,43 @@ import {
 import { fmtDateTime, fmtTime } from "@/components/app/format";
 import { scheduleTypeLabel, MEDICAL_DISCLAIMER } from "@/lib/contracts/domain";
 import {
-  callSessions,
-  sessionById,
-  scheduleById,
-  seniorById,
-  turnsBySession,
-  reportBySession,
-} from "@/lib/mock/data";
+  getCallSessionDetail,
+  getSeniors,
+  getSchedules,
+} from "@/lib/db/queries";
 
-export function generateStaticParams() {
-  return callSessions.map((s) => ({ id: s.id }));
-}
+export const dynamic = "force-dynamic";
 
-export default function CallDetailPage({
+export default async function CallDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const session = sessionById(params.id);
-  if (!session) notFound();
+  const detail = await getCallSessionDetail(params.id);
+  if (!detail) notFound();
 
-  const schedule = scheduleById(session.schedule_id);
-  const senior = seniorById(session.senior_id);
-  const turns = turnsBySession(session.id);
-  const report = reportBySession(session.id);
+  const { session, turns, report } = detail;
+  const [seniors, schedules] = await Promise.all([
+    getSeniors(),
+    getSchedules(),
+  ]);
+
+  const senior = seniors.find((s) => s.id === session.senior_id);
+  const schedule =
+    session.schedule_id != null
+      ? schedules.find((s) => s.id === session.schedule_id)
+      : undefined;
+
+  const isConsent = session.purpose === "CONSENT";
+  const seniorLabel = senior?.name ?? "부모님";
+  const title = isConsent
+    ? "동의 확인 전화"
+    : schedule?.title ?? "안내 전화";
+  const meta = isConsent
+    ? "동의 확인"
+    : schedule
+      ? scheduleTypeLabel[schedule.type]
+      : "-";
 
   return (
     <div className="flex flex-col gap-8">
@@ -44,10 +57,8 @@ export default function CallDetailPage({
           ← 통화 기록
         </Link>
         <PageHeader
-          title={schedule?.title ?? "통화 상세"}
-          subtitle={`${fmtDateTime(session.scheduled_at)} · ${senior?.name ?? "-"} · ${
-            schedule ? scheduleTypeLabel[schedule.type] : "-"
-          }`}
+          title={title}
+          subtitle={`${fmtDateTime(session.scheduled_at)} · ${seniorLabel} · ${meta}`}
           action={<SessionStatusBadge status={session.status} />}
         />
       </div>
@@ -56,13 +67,14 @@ export default function CallDetailPage({
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold">통화 전사</h2>
         {turns.length === 0 ? (
-          <p className="rounded-base bg-surface p-5 text-sm text-text-muted">
+          <p className="break-keep rounded-base bg-surface p-5 text-sm text-text-muted">
             통화가 이루어지지 않아 전사 내용이 없습니다.
           </p>
         ) : (
           <div className="flex flex-col gap-3">
             {turns.map((t) => {
               const isSystem = t.role === "SYSTEM";
+              const isDtmf = t.input_kind === "DTMF";
               return (
                 <div
                   key={t.id}
@@ -70,15 +82,15 @@ export default function CallDetailPage({
                     isSystem ? "items-start" : "items-end"
                   }`}
                 >
-                  <span className="px-1 text-xs text-text-muted">
-                    {isSystem ? "안내" : senior?.name ?? "부모님"} ·{" "}
+                  <span className="break-keep px-1 text-xs text-text-muted">
+                    {isSystem ? "안내" : seniorLabel} ·{" "}
+                    {isDtmf ? "버튼 입력" : ""}
+                    {isDtmf ? " · " : ""}
                     {fmtTime(t.created_at)}
                   </span>
                   <p
-                    className={`max-w-[85%] rounded-base px-4 py-2.5 text-sm leading-relaxed ${
-                      isSystem
-                        ? "bg-surface text-text"
-                        : "bg-primary text-bg"
+                    className={`max-w-[85%] break-keep rounded-base px-4 py-2.5 text-sm leading-relaxed ${
+                      isSystem ? "bg-surface text-text" : "bg-primary text-bg"
                     }`}
                   >
                     {t.text}
@@ -110,13 +122,13 @@ export default function CallDetailPage({
                 ) : null}
               </div>
             </div>
-            <p className="text-sm leading-relaxed">{report.summary}</p>
-            <p className="border-t border-surface pt-3 text-xs leading-relaxed text-text-muted">
+            <p className="break-keep text-sm leading-relaxed">{report.summary}</p>
+            <p className="break-keep border-t border-surface pt-3 text-xs leading-relaxed text-text-muted">
               {MEDICAL_DISCLAIMER}
             </p>
           </div>
         ) : (
-          <p className="rounded-base bg-surface p-5 text-sm text-text-muted">
+          <p className="break-keep rounded-base bg-surface p-5 text-sm text-text-muted">
             아직 생성된 리포트가 없습니다.
           </p>
         )}
