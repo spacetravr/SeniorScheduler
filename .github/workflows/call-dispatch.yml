@@ -1,0 +1,30 @@
+name: call-dispatch
+
+# ARS+ 통화 발신 트리거 (5분 주기). due 스케줄을 찾아 /api/cron/dispatch-calls 를 호출한다.
+# 참고: GitHub schedule 은 best-effort라 실제 간격이 늘어질 수 있음(정밀 SLA 필요 시 벤더 스케줄러로 이전).
+# 발신 실패 시 Issue 생성은 하지 않는다(발신 실패 알림은 추후 과제).
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger call dispatch
+        env:
+          DISPATCH_URL: ${{ secrets.DISPATCH_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          # DISPATCH_URL 예: https://seniorscheduler.vercel.app/api/cron/dispatch-calls
+          code=$(curl -s -o /tmp/out.json -w "%{http_code}" --max-time 60 \
+            -X POST "$DISPATCH_URL" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          echo "HTTP $code"
+          cat /tmp/out.json || true
+          # 실패해도 워크플로는 성공 종료(알림 없음). 다음 tick 에서 재시도.
+          if [ "$code" != "200" ]; then
+            echo "::warning::dispatch returned HTTP $code (다음 주기에 재시도)"
+          fi
