@@ -23,6 +23,12 @@
 - git stash 1건 존재 (ui 에이전트가 메인 트리에 남긴 package.json 변경 — 브랜치 커밋본과 동일해 stash 처리, drop 가능)
 - CONSENT MISSED 시 자동 재예약 없음(대리동의 재토글로 재예약) / 열린 CONSENT 세션 취소 상태(enum) 미도입 — 후속 검토
 
+### 완료 (세션 #7 후반 — 사용자 피드백 연쇄 반영)
+- **랜딩 헤더 로그인 링크** (6de355b) + **앱 베타 안내 배너** (769f149 — "발신 순차 오픈" 기대치 안내, 기능 제한 없음. 회원가입 개방 유지 = 사용자 결정)
+- **미들웨어 최적화** (data-api worktree → reviewer PASS(보안 중점) → 머지 bd7876c): matcher `/app`만으로 축소(랜딩·로그인 미들웨어 미경유) + JWT **ES256 JWKS 로컬 서명검증**(supabase-js getClaims, `lib/auth/jwks.ts` 모듈 캐시 10분, 잔여<5분이면 원격 갱신 폴백 — 로그아웃 회귀 방지). 신규 의존성·env 0. 테스트 170/170
+- **효과 실측**: 미들웨어 경유 요청 TTFB 0.42s → **0.17~0.20s**. 남은 병목 = 페이지별 DB 조회(시드니 ~0.3s) — 근본 해결은 서울 리전 이사(사용자 재검토 대상) 또는 loading.tsx 스켈레톤(체감 개선, 미착수)
+- 사용자 확인: 계정=팀 테스트 계정(관리자 역할 개념 없음, 지표는 /admin/metrics 별도 pw), 신우진=테스트 피보호자 데이터. **ARS 실전·Mock E2E 시연 모두 사용자 지시로 대기**
+
 ### 교훈
 - ui-builder가 worktree 밖(메인 트리)에서 npm install 실행해 package.json 로컬 변경 발생 → 머지 블록. **worktree 에이전트 지시문에 "npm install도 worktree 안에서" 명시할 것**
 
