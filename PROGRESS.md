@@ -29,6 +29,11 @@
 - **효과 실측**: 미들웨어 경유 요청 TTFB 0.42s → **0.17~0.20s**. 남은 병목 = 페이지별 DB 조회(시드니 ~0.3s) — 근본 해결은 서울 리전 이사(사용자 재검토 대상) 또는 loading.tsx 스켈레톤(체감 개선, 미착수)
 - 사용자 확인: 계정=팀 테스트 계정(관리자 역할 개념 없음, 지표는 /admin/metrics 별도 pw), 신우진=테스트 피보호자 데이터. **ARS 실전·Mock E2E 시연 모두 사용자 지시로 대기**
 
+### 완료 (세션 #7 — Mock·ARS 착수 준비)
+- **Gemini LLM 백엔드 연동·배포** (data-api worktree → reviewer PASS(키 유출 검사 포함) → 머지 3360595 → 배포): 사용자 제공 GEMINI_API_KEY(.env.local+Vercel, 비커밋). `lib/ai/llm.ts` selectBackend — ANTHROPIC > GEMINI > 스텁, 기본 gemini-2.5-flash(GEMINI_MODEL 오버라이드), 실패 전부 null 강등(throw 금지)→룰/UNCERTAIN 폴백, 의료 금지 프롬프트·통화당 2회 상한 유지. 테스트 191/191
+- **CLOVA AiCall 조사**: 제휴 불필요 — NCP 콘솔 셀프 신청(Object Storage+CLOVA Chatbot 선행 → Contact Center(Outbound) → 번호 등록(기존 번호는 통신서비스 이용증명원) → 시나리오 → 캠페인). 요금 비공개(문의 필요). ⚠️ 발신이 캠페인(일괄) 단위 — "예약 시각 1건 발신" 모델과 맞는지 가입 후 첫 검증 항목. [사용자] NCP 가입+상품 신청
+- **결정**: 음성클립 정책 = 전사만 유지(저장 인프라·법적 표면 최소화, 오케스트레이터 결정) / 벤더 방향 = CLOVA AiCall / 법률 자문 보류(사용자 — 단 실발신 전 확인 권고 고지됨) / LLM = 우선 Gemini(CLAUDE.md의 Anthropic 고정에서 사용자 지시로 이탈, 추상화로 교체 용이)
+
 ### 교훈
 - ui-builder가 worktree 밖(메인 트리)에서 npm install 실행해 package.json 로컬 변경 발생 → 머지 블록. **worktree 에이전트 지시문에 "npm install도 worktree 안에서" 명시할 것**
 
