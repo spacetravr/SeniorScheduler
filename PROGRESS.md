@@ -6,6 +6,27 @@
 
 ---
 
+## 2026-07-15 — 세션 #7: 배포 + CONSENT 트리거 + 앱 디자인 폴리시 2차 + 첫 화면 UX 피드백
+
+### 완료
+- **프로덕션 배포 2회** (`vercel deploy --prod`): ① 세션 #6 미배포분(통화 화면 실데이터+웜 팔레트) ② 아래 통합분. 두 번 모두 프로덕션 스모크 전 항목 PASS (랜딩·preregister·login·/app 307·CTA 204·waitlist 201·테스트행 삭제·admin 200·디스패치 무인증 POST 401)
+- **CONSENT 콜 자동 트리거** (data-api worktree → reviewer PASS → 머지 613171f): 대리동의 등록/토글 시 CONSENT 세션 자동 예약(`lib/calls/consent-scheduling.ts`+테스트 17개, seniors.ts는 admin 클라이언트 예외 — call_sessions 서버 전용 write 설계 유지), dispatch-calls에 CONSENT 블록(성사 시 self_consent_at 기록, call_reports 미생성), 0004 마이그레이션(senior당 열린 CONSENT 1개 부분 unique). vitest `.claude/worktrees/**` exclude 포함
+- **앱 내부 디자인 폴리시 2차** (ui-builder worktree → reviewer PASS → 머지 5f1bc17): 전 앱 화면 카드 shadow-card·border-border 토큰 통일, 이모지→lucide 아이콘(AppNav 5종·EmptyState LucideIcon prop·리포트 플래그·📬→MailCheck). lucide-react@1.24.0 도입
+- **첫 화면 UX 피드백 반영** (사용자: "등록하는 란이 첫 화면에 없다" — 패스트트랙 6e084fb): 대시보드에 피보호자/일정 등록 퀵 액션 상시 노출(0명 아니어도), 모바일 상단 Senior Scheduler 브랜드 헤더 신설(BrandWordmark 공용화, 랜딩과 동일 타이포)
+- 통합 main: tsc·**테스트 156/156**·빌드 통과, push 완료. **프로덕션 = main 동기화 상태**
+
+### ⚠️ 사용자/후속 액션
+- **0004 마이그레이션 SQL Editor 실행 필요** (`supabase/migrations/0004_consent_dispatch.sql` — CONSENT 중복 방지 인덱스. 코드는 없이도 동작하나 경합 방어용)
+- **Mock 파이프라인 E2E 시연 보류**: 프로덕션 DB에 동의 시각 합성 삽입이 권한 차단됨(타당) → 사용자 승인 시 직접 삽입(A) 또는 CONSENT 트리거 머지됐으니 실제 앱 플로우 경유(B — 권장, 0004 실행 후)
+- call-dispatch 워크플로는 여전히 **disabled** (사용자 지시 유지). CONSENT 트리거도 디스패치가 꺼져 있으면 세션만 쌓이고 발신 안 됨 — E2E 시 enable 필요
+- git stash 1건 존재 (ui 에이전트가 메인 트리에 남긴 package.json 변경 — 브랜치 커밋본과 동일해 stash 처리, drop 가능)
+- CONSENT MISSED 시 자동 재예약 없음(대리동의 재토글로 재예약) / 열린 CONSENT 세션 취소 상태(enum) 미도입 — 후속 검토
+
+### 교훈
+- ui-builder가 worktree 밖(메인 트리)에서 npm install 실행해 package.json 로컬 변경 발생 → 머지 블록. **worktree 에이전트 지시문에 "npm install도 worktree 안에서" 명시할 것**
+
+---
+
 ## 2026-07-15 — 세션 #6: ign8t·파운더리 종합 + Phase 3 통화 파이프라인(Mock) 완성
 
 ### 완료
