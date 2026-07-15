@@ -44,16 +44,21 @@ async function triggerAsyncCall(
     if (!adapter.triggerCall) {
       throw new TelephonyNotConfiguredError("어댑터가 비동기 triggerCall 을 지원하지 않습니다.");
     }
-    await adapter.triggerCall({
+    const { providerCallId } = await adapter.triggerCall({
       sessionId: args.sessionId,
       seniorId: args.seniorId,
       to: args.to,
       purpose: args.purpose,
     });
     // 발신 트리거 성공 → 발신 중. 완료/재시도는 콜백이 처리.
+    // provider_call_id: 벤더 CallId — 전사 조회·CallId 역조회 상관키(0006). 없으면 미설정.
     await supabase
       .from("call_sessions")
-      .update({ status: "DIALING", next_attempt_at: null })
+      .update({
+        status: "DIALING",
+        next_attempt_at: null,
+        ...(providerCallId ? { provider_call_id: providerCallId } : {}),
+      })
       .eq("id", args.sessionId);
     return "triggered";
   } catch (err) {
