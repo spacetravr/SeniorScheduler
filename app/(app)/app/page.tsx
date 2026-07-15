@@ -4,7 +4,7 @@
  * - 주간 이행률 / 최근 통화 결과: getRecentReports() 실데이터. 0건이면 안내 문구(빈 상태) 유지.
  */
 import Link from "next/link";
-import { Hand } from "lucide-react";
+import { Hand, UserPlus, CalendarPlus } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import {
   SessionStatusBadge,
@@ -111,6 +111,24 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="대시보드" subtitle={todayLabelKst()} />
+
+      {/* 빠른 등록 — 피보호자 유무와 무관하게 상시 노출 */}
+      <section aria-label="빠른 등록" className="grid grid-cols-2 gap-3">
+        <Link
+          href="/app/seniors"
+          className="flex items-center justify-center gap-2 rounded-base border border-border bg-bg px-4 py-3.5 text-sm font-semibold text-primary shadow-card transition-colors hover:bg-primary-soft"
+        >
+          <UserPlus className="h-5 w-5 shrink-0" aria-hidden strokeWidth={2} />
+          피보호자 등록
+        </Link>
+        <Link
+          href="/app/schedules"
+          className="flex items-center justify-center gap-2 rounded-base border border-border bg-bg px-4 py-3.5 text-sm font-semibold text-primary shadow-card transition-colors hover:bg-primary-soft"
+        >
+          <CalendarPlus className="h-5 w-5 shrink-0" aria-hidden strokeWidth={2} />
+          일정 등록
+        </Link>
+      </section>
 
       {awaitingSelfConsent.length > 0 ? (
         <div className="flex flex-col gap-1 rounded-base border border-primary bg-primary-soft px-4 py-3">

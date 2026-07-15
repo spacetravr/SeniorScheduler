@@ -30,13 +30,32 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
+/** 브랜드 워드마크 — 랜딩 헤더와 동일한 타이포(tracking-tight)로 통일. */
+export function BrandWordmark({ className = "" }: { className?: string }) {
+  return (
+    <Link
+      href="/app"
+      className={`font-bold tracking-tight text-primary ${className}`}
+    >
+      Senior Scheduler
+    </Link>
+  );
+}
+
+/** 모바일 상단 브랜드 헤더 (데스크톱은 사이드바가 브랜드 표기 담당). */
+export function MobileHeader() {
+  return (
+    <header className="sticky top-0 z-20 border-b border-border bg-bg/85 px-5 py-3 backdrop-blur md:hidden">
+      <BrandWordmark className="text-lg" />
+    </header>
+  );
+}
+
 export function DesktopSidebar() {
   const pathname = usePathname();
   return (
     <aside className="hidden w-56 shrink-0 flex-col gap-1 border-r border-border p-4 md:flex">
-      <Link href="/app" className="mb-4 px-2 text-lg font-bold">
-        Senior Scheduler
-      </Link>
+      <BrandWordmark className="mb-4 px-2 text-lg" />
       {NAV.map((item) => {
         const active = isActive(pathname, item.href);
         const Icon = item.icon;
@@ -48,7 +67,7 @@ export function DesktopSidebar() {
               active ? "bg-primary text-bg" : "text-text-muted hover:bg-surface"
             }`}
           >
-            <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden strokeWidth={2} />
+            <Icon className="h-5 w-5 shrink-0" aria-hidden strokeWidth={2} />
             {item.label}
           </Link>
         );
