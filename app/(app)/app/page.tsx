@@ -4,6 +4,7 @@
  * - 주간 이행률 / 최근 통화 결과: getRecentReports() 실데이터. 0건이면 안내 문구(빈 상태) 유지.
  */
 import Link from "next/link";
+import { Hand } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import {
   SessionStatusBadge,
@@ -112,7 +113,7 @@ export default async function DashboardPage() {
       <PageHeader title="대시보드" subtitle={todayLabelKst()} />
 
       {awaitingSelfConsent.length > 0 ? (
-        <div className="flex flex-col gap-1 rounded-base border border-primary bg-surface px-4 py-3">
+        <div className="flex flex-col gap-1 rounded-base border border-primary bg-primary-soft px-4 py-3">
           <p className="break-keep text-sm font-semibold text-primary">
             {awaitingSelfConsent.length === 1
               ? `${awaitingSelfConsent[0].name}님의 동의 콜이 준비 중입니다`
@@ -127,7 +128,7 @@ export default async function DashboardPage() {
 
       {!hasSeniors ? (
         <EmptyState
-          icon="👋"
+          icon={Hand}
           title="Senior Scheduler를 시작해 볼까요?"
           description="부모님을 등록하고 통화 동의를 완료한 뒤, 복약·병원 일정을 추가하면 예약한 시간에 자동으로 전화를 걸어드려요."
           action={{ href: "/app/seniors", label: "피보호자 등록하기" }}
@@ -154,7 +155,7 @@ export default async function DashboardPage() {
               <Link
                 key={inst.schedule.id}
                 href="/app/schedules"
-                className="flex items-center gap-4 rounded-base border border-surface p-4 transition-colors hover:border-primary"
+                className="flex items-center gap-4 rounded-base border border-border bg-bg p-4 shadow-card transition-colors hover:border-primary"
               >
                 <span className="w-14 shrink-0 text-lg font-bold tabular-nums">
                   {fmtTime(inst.scheduled_at)}
@@ -232,7 +233,7 @@ export default async function DashboardPage() {
                   <Link
                     key={r.id}
                     href={session ? `/app/calls/${session.id}` : "/app/calls"}
-                    className="flex flex-col gap-2 rounded-base border border-surface p-4 transition-colors hover:border-primary"
+                    className="flex flex-col gap-2 rounded-base border border-border bg-bg p-4 shadow-card transition-colors hover:border-primary"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="break-keep text-sm text-text-muted">

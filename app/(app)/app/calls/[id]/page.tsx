@@ -4,6 +4,7 @@
  */
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronLeft, Frown, Stethoscope } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import {
   SessionStatusBadge,
@@ -53,8 +54,12 @@ export default async function CallDetailPage({
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4">
-        <Link href="/app/calls" className="text-sm font-medium text-primary">
-          ← 통화 기록
+        <Link
+          href="/app/calls"
+          className="inline-flex w-fit items-center gap-1 text-sm font-medium text-primary"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden strokeWidth={2} />
+          통화 기록
         </Link>
         <PageHeader
           title={title}
@@ -106,24 +111,26 @@ export default async function CallDetailPage({
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold">통화 리포트</h2>
         {report ? (
-          <div className="flex flex-col gap-3 rounded-base border border-surface p-5">
+          <div className="flex flex-col gap-3 rounded-base border border-border bg-bg p-5 shadow-card">
             <div className="flex items-center justify-between gap-3">
               <AdherenceStatusBadge status={report.adherence_status} />
               <div className="flex gap-2 text-xs">
                 {report.mood_flag ? (
                   <span className="inline-flex items-center gap-1 rounded-base bg-surface px-2 py-1 font-medium text-accent">
-                    🙁 기분 살핌
+                    <Frown className="h-3.5 w-3.5" aria-hidden strokeWidth={2} />
+                    기분 살핌
                   </span>
                 ) : null}
                 {report.health_flag ? (
                   <span className="inline-flex items-center gap-1 rounded-base bg-surface px-2 py-1 font-medium text-accent">
-                    🩺 건강 신호
+                    <Stethoscope className="h-3.5 w-3.5" aria-hidden strokeWidth={2} />
+                    건강 신호
                   </span>
                 ) : null}
               </div>
             </div>
             <p className="break-keep text-sm leading-relaxed">{report.summary}</p>
-            <p className="break-keep border-t border-surface pt-3 text-xs leading-relaxed text-text-muted">
+            <p className="break-keep border-t border-border pt-3 text-xs leading-relaxed text-text-muted">
               {MEDICAL_DISCLAIMER}
             </p>
           </div>

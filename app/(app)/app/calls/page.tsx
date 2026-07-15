@@ -3,6 +3,7 @@
  * 항목 클릭 시 상세(/app/calls/[id]).
  */
 import Link from "next/link";
+import { Phone } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { SessionStatusBadge } from "@/components/app/StatusBadge";
 import { EmptyState } from "@/components/app/EmptyState";
@@ -31,7 +32,7 @@ export default async function CallsPage() {
 
       {sessions.length === 0 ? (
         <EmptyState
-          icon="📞"
+          icon={Phone}
           title="아직 통화 기록이 없습니다"
           description="발신이 시작되면 부모님께 걸린 안내 전화가 여기에 표시됩니다."
         />
@@ -54,7 +55,7 @@ export default async function CallsPage() {
               <Link
                 key={s.id}
                 href={`/app/calls/${s.id}`}
-                className="flex items-center gap-4 rounded-base border border-surface p-4 transition-colors hover:border-primary"
+                className="flex items-center gap-4 rounded-base border border-border bg-bg p-4 shadow-card transition-colors hover:border-primary"
               >
                 <div className="flex flex-1 flex-col gap-0.5">
                   <span className="break-keep font-medium">{title}</span>
