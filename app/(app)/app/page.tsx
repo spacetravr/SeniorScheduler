@@ -10,7 +10,7 @@ import {
   AdherenceStatusBadge,
 } from "@/components/app/StatusBadge";
 import { EmptyState } from "@/components/app/EmptyState";
-import { fmtTime, fmtDate } from "@/components/app/format";
+import { fmtTime, fmtDate, kstYmd } from "@/components/app/format";
 import { scheduleTypeLabel } from "@/lib/contracts/domain";
 import { getConsentStatus } from "@/components/app/consent";
 import {
@@ -87,7 +87,7 @@ export default async function DashboardPage() {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDaysYmd(todayYmd, i - 6));
   const reportsByDay = new Map<string, typeof reports>();
   for (const r of reports) {
-    const ymd = r.created_at.slice(0, 10);
+    const ymd = kstYmd(r.created_at); // UTC 오프셋도 KST 달력일로 정규화
     const arr = reportsByDay.get(ymd) ?? [];
     arr.push(r);
     reportsByDay.set(ymd, arr);

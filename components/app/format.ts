@@ -1,23 +1,33 @@
 /**
- * 표시 전용 포맷 헬퍼 — KST ISO 문자열("2026-07-06T09:00:00+09:00")을
- * 문자열 슬라이싱만으로 변환한다. Date 연산 금지(Phase 1 규칙).
+ * 표시 전용 포맷 헬퍼 — 임의 오프셋의 ISO 문자열(+00:00 UTC이든 +09:00이든)을
+ * 항상 KST(Asia/Seoul)로 변환해 표기한다. Supabase REST는 timestamptz를 UTC(+00:00)로
+ * 반환하므로 문자열 슬라이싱 대신 date-fns-tz의 formatInTimeZone으로 명시 변환한다.
+ * (같은 순간이면 입력 오프셋과 무관하게 동일한 KST 표기가 나와야 함)
  */
+import { formatInTimeZone } from "date-fns-tz";
 
-/** "2026-07-06T09:00:00+09:00" → "7월 6일" */
+const KST = "Asia/Seoul";
+
+/** ISO(임의 오프셋) → KST "7월 6일" (앞 0 없이) */
 export function fmtDate(iso: string): string {
-  const month = Number(iso.slice(5, 7));
-  const day = Number(iso.slice(8, 10));
+  const month = Number(formatInTimeZone(iso, KST, "M"));
+  const day = Number(formatInTimeZone(iso, KST, "d"));
   return `${month}월 ${day}일`;
 }
 
-/** "2026-07-06T09:00:00+09:00" → "09:00" */
+/** ISO(임의 오프셋) → KST "09:00" */
 export function fmtTime(iso: string): string {
-  return iso.slice(11, 16);
+  return formatInTimeZone(iso, KST, "HH:mm");
 }
 
-/** "2026-07-06T09:00:00+09:00" → "7월 6일 09:00" */
+/** ISO(임의 오프셋) → KST "7월 6일 09:00" */
 export function fmtDateTime(iso: string): string {
   return `${fmtDate(iso)} ${fmtTime(iso)}`;
+}
+
+/** ISO(임의 오프셋) → KST 달력 날짜 "yyyy-MM-dd" (버킷 키·집계용) */
+export function kstYmd(iso: string): string {
+  return formatInTimeZone(iso, KST, "yyyy-MM-dd");
 }
 
 /** 요일 정규 순서 (BYDAY 입력 순서와 무관하게 이 순서로 표시) */
