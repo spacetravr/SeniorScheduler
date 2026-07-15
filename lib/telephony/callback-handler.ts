@@ -112,6 +112,14 @@ export interface CallbackStore {
   reportExists(sessionId: string): Promise<boolean>;
   insertReport(sessionId: string, report: GeneratedReport): Promise<void>;
   setSelfConsent(seniorId: string, atIso: string): Promise<void>;
+  /**
+   * 세션에 이미 저장된 턴 조회(created_at 오름차순) — 선택적.
+   *
+   * ClawOps 등 "웹훅에 전사가 실리지 않는" 벤더 모델용: DTMF 턴은 VoiceML 스텝에서, 전사는
+   * 콜백이 별도 API 로 확보해 call_turns 에 먼저 적재한다. 이 경우 COMPLETE 처리는 payload.turns
+   * 대신 DB 에 적재된 턴으로 분류한다(중복 insert 방지). 미구현(generic/clova 모델)이면 undefined.
+   */
+  getExistingTurns?(sessionId: string): Promise<CallbackTurn[]>;
 }
 
 export type CallbackResult =
@@ -189,15 +197,26 @@ async function completeCall(
   deps: { store: CallbackStore; llm: LlmClient; now: Date },
 ): Promise<CallbackResult> {
   const { store, llm, now } = deps;
-  const { startedAt, endedAt } = deriveCallWindow(payload.turns, now);
   const vendorCost = payload.cost_krw ?? 0; // 회선+STT+TTS(벤더 산정). LLM 은 아래서 합산.
 
-  // 전사 저장(멱등: 리포트/동의가 아직 없을 때만 — 종결 전 최초 COMPLETED 1회).
-  await store.insertTurns(session.id, payload.turns);
+  // 턴 소스 결정:
+  //   - 웹훅에 전사가 실려온 모델(generic/clova/mock): payload.turns 를 저장 + 분류에 사용.
+  //   - 전사 별도 확보 모델(clawops): payload.turns 는 비어 있고, DTMF·전사는 이미 call_turns 에
+  //     적재됨 → getExistingTurns 로 읽어 분류(중복 insert 방지, 재삽입 안 함).
+  let turns: readonly CallbackTurn[];
+  if (payload.turns.length > 0) {
+    await store.insertTurns(session.id, payload.turns);
+    turns = payload.turns;
+  } else if (store.getExistingTurns) {
+    turns = await store.getExistingTurns(session.id);
+  } else {
+    turns = [];
+  }
+  const { startedAt, endedAt } = deriveCallWindow(turns, now);
 
   if (session.purpose === "SCHEDULE") {
     const { report, llmCostKrw } = await classifyAndReportSchedule({
-      turns: payload.turns,
+      turns: [...turns],
       scheduleTitle: await scheduleTitleOf(store, session),
       answered: true,
       attempts: session.attempt,
@@ -217,7 +236,7 @@ async function completeCall(
   }
 
   // CONSENT 콜: 동의 성사 판정 → self_consent_at 기록. 리포트 없음(가드레일: 판정 대상 아님).
-  const granted = evaluateConsentGranted(payload.turns, true);
+  const granted = evaluateConsentGranted([...turns], true);
   await store.updateSession(session.id, {
     status: "COMPLETED",
     started_at: startedAt,
