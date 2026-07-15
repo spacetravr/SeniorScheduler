@@ -30,7 +30,7 @@ export function PreregisterForm() {
 
   if (status === "done") {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-base border border-surface bg-bg p-8 text-center shadow-sm">
+      <div className="flex flex-col items-center gap-4 rounded-base border border-border bg-bg p-8 text-center shadow-card">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface text-3xl">
           🎉
         </div>
@@ -45,7 +45,7 @@ export function PreregisterForm() {
   }
 
   return (
-    <div className="flex flex-col gap-5 rounded-base border border-surface bg-bg p-6 text-center shadow-sm sm:p-8">
+    <div className="flex flex-col gap-5 rounded-base border border-border bg-bg p-6 text-center shadow-card sm:p-8">
       <div className="flex flex-col items-center gap-2">
         <h2 className="text-2xl font-bold">이메일로 사전등록</h2>
         <p className="text-base leading-relaxed text-text-muted">

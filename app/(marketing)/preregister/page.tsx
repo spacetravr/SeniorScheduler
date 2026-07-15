@@ -63,7 +63,7 @@ export default function PreregisterPage() {
             ))}
           </ul>
 
-          <div className="relative hidden aspect-[16/10] w-full max-w-md overflow-hidden rounded-base shadow-sm lg:block">
+          <div className="relative hidden aspect-[16/10] w-full max-w-md overflow-hidden rounded-base border border-border shadow-card lg:block">
             <Image
               src="/images/senior-man-phone.jpg"
               alt="소파에 앉아 편안하게 스마트폰을 보고 계신 아버님"

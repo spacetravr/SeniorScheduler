@@ -50,7 +50,7 @@ export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* 헤더 */}
-      <header className="sticky top-0 z-30 border-b border-surface bg-bg/90 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-border bg-bg/85 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8">
           <span className="text-lg font-bold tracking-tight sm:text-xl">
             Senior Scheduler
@@ -87,7 +87,7 @@ export default function LandingPage() {
             </div>
 
             <div className="w-full flex-1">
-              <div className="relative mx-auto aspect-[4/5] w-full max-w-md overflow-hidden rounded-base shadow-sm sm:max-w-lg">
+              <div className="relative mx-auto aspect-[4/5] w-full max-w-md overflow-hidden rounded-base border border-border shadow-card sm:max-w-lg">
                 <Image
                   src="/images/hero-senior-couple.jpg"
                   alt="전화를 받으며 환하게 웃고 계신 어머님과 아버님"
@@ -110,9 +110,9 @@ export default function LandingPage() {
             {STEPS.map((s) => (
               <div
                 key={s.step}
-                className="flex flex-col items-center gap-4 rounded-base border border-surface bg-bg p-8 text-center"
+                className="flex flex-col items-center gap-4 rounded-base border border-border bg-bg p-8 text-center shadow-card"
               >
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-2xl font-bold text-bg">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-2xl font-bold text-bg shadow-sm">
                   {s.step}
                 </span>
                 <h3 className="text-xl font-bold">{s.title}</h3>
@@ -130,7 +130,7 @@ export default function LandingPage() {
                 {BENEFITS.map((b) => (
                   <div
                     key={b.label}
-                    className="flex flex-col gap-3 rounded-base border border-bg bg-bg p-6"
+                    className="flex flex-col gap-3 rounded-base border border-border bg-bg p-6 shadow-card"
                   >
                     <span className="text-sm font-bold text-primary">
                       {b.label}
@@ -165,7 +165,7 @@ export default function LandingPage() {
                   두 분의 경험은 이렇게 다릅니다. 보호자는 웹으로 챙기고,
                   부모님은 늘 쓰시던 전화를 받기만 하시면 됩니다.
                 </p>
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-base shadow-sm">
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-base border border-border shadow-card">
                   <Image
                     src="/images/family.jpg"
                     alt="손녀와 함께 사진을 찍으며 웃는 할머니"
@@ -199,7 +199,7 @@ export default function LandingPage() {
 
         {/* 마지막 CTA 배너 */}
         <section className="px-5 py-16 sm:px-8 sm:py-20">
-          <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 rounded-base border border-primary/15 bg-primary/5 px-5 py-14 text-center sm:px-8 sm:py-16">
+          <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 rounded-base border border-primary/10 bg-primary-soft px-5 py-14 text-center shadow-card sm:px-8 sm:py-16">
             <h2 className="text-3xl font-bold leading-tight tracking-tight text-text sm:text-4xl">
               오늘부터 부모님께
               <br className="sm:hidden" /> 따뜻한 전화를 시작해 보세요
@@ -215,7 +215,7 @@ export default function LandingPage() {
       </main>
 
       {/* 푸터 */}
-      <footer className="border-t border-surface">
+      <footer className="border-t border-border bg-surface">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-5 py-10 text-center text-sm text-text-muted sm:px-8">
           <span className="text-base font-bold text-text">Senior Scheduler</span>
           <p>정식 출시를 준비 중인 베타 서비스입니다.</p>
@@ -232,9 +232,9 @@ export default function LandingPage() {
 /** 앱 리포트 화면처럼 보이는 예시 카드 (정적 목업). */
 function ReportPreviewCard() {
   return (
-    <div className="overflow-hidden rounded-base border border-surface bg-bg shadow-sm">
+    <div className="overflow-hidden rounded-base border border-border bg-bg shadow-card">
       {/* 상단 헤더: 날짜·시간 + 상태 칩 */}
-      <div className="flex items-center justify-between gap-3 border-b border-surface p-5">
+      <div className="flex items-center justify-between gap-3 border-b border-border p-5">
         <div className="flex flex-col gap-0.5">
           <span className="text-xs text-text-muted">
             7월 12일 (일) · 오전 9:00
@@ -303,7 +303,7 @@ function ReportPreviewCard() {
       </div>
 
       {/* 예시 라벨 */}
-      <div className="border-t border-surface px-5 py-3">
+      <div className="border-t border-border px-5 py-3">
         <span className="text-xs text-text-muted">예시 화면입니다</span>
       </div>
     </div>

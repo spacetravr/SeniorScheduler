@@ -13,14 +13,19 @@ const config: Config = {
     extend: {
       colors: {
         primary: "var(--color-primary)",
+        "primary-soft": "var(--color-primary-soft)",
         accent: "var(--color-accent)",
         bg: "var(--color-bg)",
         surface: "var(--color-surface)",
+        border: "var(--color-border)",
         text: "var(--color-text)",
         "text-muted": "var(--color-text-muted)",
       },
       borderRadius: {
         base: "var(--radius-base)",
+      },
+      boxShadow: {
+        card: "var(--shadow-card)",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
