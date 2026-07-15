@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/app/EmptyState";
 import { SampleBadge } from "@/components/app/SampleBadge";
 import { fmtTime, fmtDate } from "@/components/app/format";
 import { scheduleTypeLabel } from "@/lib/contracts/domain";
+import { getConsentStatus } from "@/components/app/consent";
 import { getTodayCallInstances, getSeniors } from "@/lib/db/queries";
 import {
   weeklyAdherence,
@@ -46,9 +47,28 @@ export default async function DashboardPage() {
   const recentReports = callReports.slice(0, 3);
   const hasSeniors = seniors.length > 0;
 
+  // 본인 동의(동의 콜) 대기 중인 피보호자 — 대리동의는 됐으나 본인 동의가 아직인 경우
+  const awaitingSelfConsent = seniors.filter(
+    (s) => getConsentStatus(s) === "SELF_PENDING",
+  );
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="대시보드" subtitle={todayLabelKst()} />
+
+      {awaitingSelfConsent.length > 0 ? (
+        <div className="flex flex-col gap-1 rounded-base border border-primary bg-surface px-4 py-3">
+          <p className="text-sm font-semibold text-primary">
+            {awaitingSelfConsent.length === 1
+              ? `${awaitingSelfConsent[0].name}님의 동의 콜이 준비 중입니다`
+              : `${awaitingSelfConsent[0].name}님 외 ${awaitingSelfConsent.length - 1}명의 동의 콜이 준비 중입니다`}
+          </p>
+          <p className="text-xs leading-relaxed text-text-muted">
+            첫 통화에서 부모님께 직접 동의를 여쭙습니다. 부모님이 동의하시면 일정
+            전화가 시작됩니다.
+          </p>
+        </div>
+      ) : null}
 
       {!hasSeniors ? (
         <EmptyState
