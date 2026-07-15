@@ -5,6 +5,7 @@
  * 브랜드: Senior Scheduler.
  */
 import Image from "next/image";
+import Link from "next/link";
 import { PreregisterButton } from "@/components/marketing/PreregisterButton";
 
 const STEPS = [
@@ -55,7 +56,15 @@ export default function LandingPage() {
           <span className="text-lg font-bold tracking-tight sm:text-xl">
             Senior Scheduler
           </span>
-          <PreregisterButton size="sm" />
+          <div className="flex items-center gap-4">
+            <Link
+              href="/login"
+              className="text-sm font-medium text-text-muted transition-colors hover:text-primary"
+            >
+              로그인
+            </Link>
+            <PreregisterButton size="sm" />
+          </div>
         </div>
       </header>
 
