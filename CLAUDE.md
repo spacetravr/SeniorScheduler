@@ -41,21 +41,24 @@
 - `cta_events`(VIEW|CLICK_SUBSCRIBE|CLICK_TRY|WAITLIST_SUBMIT, utm 3종, session_uuid), `waitlist`
 - 녹음 원본 미저장(전사만). PII 로그 마스킹.
 
-## 디자인 토큰 (placeholder — 확정값 대기)
+## 디자인 토큰 (2026-07-15 확정 — "따뜻함+신뢰": 딥 네이비 + 웜 크림 + 테라코타)
 ```css
 :root {
-  --color-primary: #2563eb;   /* TODO: Claude Design 확정값으로 교체 */
-  --color-accent: #f59e0b;
-  --color-bg: #ffffff;
-  --color-surface: #f8fafc;
-  --color-text: #0f172a;
-  --color-text-muted: #64748b;
-  --radius-base: 12px;
+  --color-primary: #1E3A5F;       /* 딥 네이비 — 신뢰. CTA·강조 */
+  --color-primary-soft: #EAF0F7;  /* 네이비 틴트 — soft 배경 */
+  --color-accent: #C2410B;        /* 웜 테라코타 — 강조·경고 (AA 통과) */
+  --color-bg: #FBF7F0;            /* 웜 화이트 */
+  --color-surface: #F0E7D8;       /* 소프트 베이지 — 교차 섹션 */
+  --color-border: #E7DBC8;        /* 웜 보더 */
+  --color-text: #263140;          /* 잉크 네이비 (대비 11:1+) */
+  --color-text-muted: #6B5D4F;    /* 웜 토프 (대비 5.5:1) */
+  --radius-base: 14px;
   --font-sans: 'Pretendard Variable', sans-serif;
+  --shadow-card: 0 1px 2px rgba(38,49,64,.04), 0 10px 30px -16px rgba(38,49,64,.18);
 }
 ```
-- 모든 컴포넌트는 이 변수만 참조. 확정 디자인이 오면 이 블록만 교체하면 전체 반영되는 구조 유지.
-- 톤 방향(잠정): 따뜻함+신뢰 (차가운 SaaS 블루 단독 금지).
+- 단일 소스는 `app/globals.css`의 토큰 블록 (이 섹션과 동기화 유지). 모든 컴포넌트는 변수/Tailwind theme만 참조 — 하드코딩 금지 불변.
+- 리스킨 시 globals.css 블록만 교체하면 전체 반영. 전 조합 WCAG AA 대비 검증됨.
 
 ## 가드레일
 1. 의료 조언 생성 금지 (LLM 프롬프트 명시 + 리포트 하단 고지 문구 고정)

@@ -21,8 +21,15 @@
 - **⚠️ call-dispatch 워크플로는 `disabled_manually` 상태** (사용자 지시: "전화 기능 제외하고 배포") — Mock 발신이 프로덕션에서 돌지 않음. E2E 시작 시 `gh workflow enable call-dispatch.yml` 한 줄로 재활성화
 - 신형 sb_secret 키 주의: REST 호출 시 `apikey` 헤더만 사용 (`Authorization: Bearer`에 넣으면 JWT 파싱 실패로 401)
 
+### 완료 (세션 #6 후반 — 병렬 2레인 + 디자인)
+- **통화 화면 실데이터 전환** (ui-builder → reviewer FAIL→수정→PASS → 머지 20f3d9c): /app/calls·[id]·/app/reports·대시보드 mock 제거, 동의 콜 라벨·DTMF 표기·빈 상태 3종. **중대 버그 수정 포함**: Supabase가 UTC(+00:00)로 반환하는데 format.ts가 KST 문자열 가정 슬라이싱 → 실데이터에서 전 시각 9h 밀림·자정경계 날짜 오버킷팅. date-fns-tz `formatInTimeZone("Asia/Seoul")` 기반으로 재구현+`kstYmd()` 헬퍼, 자정 경계 테스트 추가 (admin/metrics는 원래 정상 확인)
+- **디자인 토큰 확정** (ui-builder worktree 격리 → reviewer PASS → 머지 dfb1f87): 웜 팔레트(#FBF7F0 bg / #1E3A5F primary / #C2410B 테라코타 accent / radius 14px / shadow-card), 전 조합 WCAG AA 검증. 랜딩·사전등록·로그인 카드 폴리시(스타일만). CLAUDE.md 토큰 섹션 확정값으로 동기화됨
+- 통합 main: tsc·**테스트 139/139**·빌드 통과. **⚠️ 이 분량은 아직 프로덕션 미배포** (main에만 머지됨)
+- worktree 격리 병렬이 정상 작동 (충돌 0). 단 worktree가 저장소 내부(.claude/worktrees)에 생겨 vitest 이중 집계 — worktree 제거로 해소, vitest exclude 추가는 후속 과제
+
 ### 다음 할 일
-1. **[사용자]** Supabase SQL Editor에서 `supabase/migrations/0003_call_pipeline.sql` 실행
+0. **배포 대기**: 통화 화면+새 디자인 분량 `vercel deploy --prod` (사용자 승인 필요)
+1. ~~**[사용자]** Supabase SQL Editor에서 `supabase/migrations/0003_call_pipeline.sql` 실행~~ ✅ 완료 (2026-07-15, REST 검증됨)
 2. **[사용자]** CRON_SECRET 생성 → Vercel env + GitHub secret(CRON_SECRET) 동일값, GitHub secret DISPATCH_URL=`https://seniorscheduler.vercel.app/api/cron/dispatch-calls`
 3. 1번 후 배포(/ship) → Mock 파이프라인 E2E 확인(일정 ON→디스패치→리포트)
 4. ui-builder: /app/calls·/app/reports mock→실데이터 전환 (쿼리 준비됨: getCallSessions/getCallSessionDetail/getRecentReports)
