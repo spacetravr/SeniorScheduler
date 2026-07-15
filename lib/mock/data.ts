@@ -23,6 +23,7 @@ export const seniors: Senior[] = [
     birth_year: 1948,
     consent_at: "2026-06-20T10:00:00+09:00",
     consent_by: GUARDIAN_ID,
+    self_consent_at: "2026-06-20T10:00:00+09:00",
     created_at: "2026-06-20T09:58:00+09:00",
   },
   {
@@ -33,6 +34,7 @@ export const seniors: Senior[] = [
     birth_year: 1945,
     consent_at: null,
     consent_by: null,
+    self_consent_at: null,
     created_at: "2026-07-01T14:30:00+09:00",
   },
 ];
@@ -101,6 +103,7 @@ export const callSessions: CallSession[] = [
   // 오늘 예정
   {
     id: "c0000000-0000-4000-8000-000000000001",
+    purpose: "SCHEDULE",
     schedule_id: schedules[1].id,
     senior_id: seniors[0].id,
     status: "SCHEDULED",
@@ -113,6 +116,7 @@ export const callSessions: CallSession[] = [
   // 오늘 통화 완료
   {
     id: "c0000000-0000-4000-8000-000000000002",
+    purpose: "SCHEDULE",
     schedule_id: schedules[0].id,
     senior_id: seniors[0].id,
     status: "COMPLETED",
@@ -125,6 +129,7 @@ export const callSessions: CallSession[] = [
   // 어제 완료 (미이행 리포트)
   {
     id: "c0000000-0000-4000-8000-000000000003",
+    purpose: "SCHEDULE",
     schedule_id: schedules[1].id,
     senior_id: seniors[0].id,
     status: "COMPLETED",
@@ -137,6 +142,7 @@ export const callSessions: CallSession[] = [
   // 어제 완료 (연기 리포트)
   {
     id: "c0000000-0000-4000-8000-000000000004",
+    purpose: "SCHEDULE",
     schedule_id: schedules[0].id,
     senior_id: seniors[0].id,
     status: "COMPLETED",
@@ -149,6 +155,7 @@ export const callSessions: CallSession[] = [
   // 그제 완료 (확인필요 리포트)
   {
     id: "c0000000-0000-4000-8000-000000000005",
+    purpose: "SCHEDULE",
     schedule_id: schedules[0].id,
     senior_id: seniors[0].id,
     status: "COMPLETED",
@@ -161,6 +168,7 @@ export const callSessions: CallSession[] = [
   // 재시도 끝에 불발
   {
     id: "c0000000-0000-4000-8000-000000000006",
+    purpose: "SCHEDULE",
     schedule_id: schedules[1].id,
     senior_id: seniors[0].id,
     status: "MISSED",
@@ -173,6 +181,7 @@ export const callSessions: CallSession[] = [
   // 발신 중 (진행 상태 예시)
   {
     id: "c0000000-0000-4000-8000-000000000007",
+    purpose: "SCHEDULE",
     schedule_id: schedules[3].id,
     senior_id: seniors[1].id,
     status: "DIALING",
@@ -185,6 +194,7 @@ export const callSessions: CallSession[] = [
   // 통화 중
   {
     id: "c0000000-0000-4000-8000-000000000008",
+    purpose: "SCHEDULE",
     schedule_id: schedules[4].id,
     senior_id: seniors[1].id,
     status: "IN_PROGRESS",
@@ -197,6 +207,7 @@ export const callSessions: CallSession[] = [
   // 완료 (완료 리포트)
   {
     id: "c0000000-0000-4000-8000-000000000009",
+    purpose: "SCHEDULE",
     schedule_id: schedules[0].id,
     senior_id: seniors[0].id,
     status: "COMPLETED",
@@ -209,6 +220,7 @@ export const callSessions: CallSession[] = [
   // 오늘 예정
   {
     id: "c0000000-0000-4000-8000-000000000010",
+    purpose: "SCHEDULE",
     schedule_id: schedules[0].id,
     senior_id: seniors[1].id,
     status: "SCHEDULED",
@@ -227,6 +239,7 @@ export const callTurns: CallTurn[] = [
     id: "d0000000-0000-4000-8000-000000000001",
     session_id: callSessions[1].id,
     role: "SYSTEM",
+    input_kind: "VOICE",
     text: "안녕하세요 어머니, 자녀분이 예약한 안부 전화예요. 이 통화는 안내를 위해 녹음·정리됩니다. 아침 혈압약 드실 시간이에요. 약 챙겨 드셨나요?",
     created_at: "2026-07-06T09:00:18+09:00",
   },
@@ -234,6 +247,7 @@ export const callTurns: CallTurn[] = [
     id: "d0000000-0000-4000-8000-000000000002",
     session_id: callSessions[1].id,
     role: "SENIOR",
+    input_kind: "VOICE",
     text: "응 방금 먹었어. 물이랑 같이 잘 먹었지.",
     created_at: "2026-07-06T09:00:31+09:00",
   },
@@ -241,6 +255,7 @@ export const callTurns: CallTurn[] = [
     id: "d0000000-0000-4000-8000-000000000003",
     session_id: callSessions[1].id,
     role: "SYSTEM",
+    input_kind: "VOICE",
     text: "잘하셨어요. 오늘 기분은 어떠세요?",
     created_at: "2026-07-06T09:00:45+09:00",
   },
@@ -248,6 +263,7 @@ export const callTurns: CallTurn[] = [
     id: "d0000000-0000-4000-8000-000000000004",
     session_id: callSessions[1].id,
     role: "SENIOR",
+    input_kind: "VOICE",
     text: "기분 좋아. 날씨도 맑고 산책도 다녀왔어.",
     created_at: "2026-07-06T09:01:02+09:00",
   },
@@ -255,6 +271,7 @@ export const callTurns: CallTurn[] = [
     id: "d0000000-0000-4000-8000-000000000005",
     session_id: callSessions[1].id,
     role: "SYSTEM",
+    input_kind: "VOICE",
     text: "다행이에요. 오늘도 건강히 보내세요. 전화 받아주셔서 고맙습니다.",
     created_at: "2026-07-06T09:01:30+09:00",
   },
@@ -263,6 +280,7 @@ export const callTurns: CallTurn[] = [
     id: "d0000000-0000-4000-8000-000000000006",
     session_id: callSessions[2].id,
     role: "SYSTEM",
+    input_kind: "VOICE",
     text: "어머니, 저녁 당뇨약 드실 시간이에요. 챙겨 드셨나요?",
     created_at: "2026-07-05T19:00:14+09:00",
   },
@@ -270,6 +288,7 @@ export const callTurns: CallTurn[] = [
     id: "d0000000-0000-4000-8000-000000000007",
     session_id: callSessions[2].id,
     role: "SENIOR",
+    input_kind: "VOICE",
     text: "아직 안 먹었어. 저녁을 아직 안 먹어서 이따 먹으려고.",
     created_at: "2026-07-05T19:00:29+09:00",
   },
@@ -277,6 +296,7 @@ export const callTurns: CallTurn[] = [
     id: "d0000000-0000-4000-8000-000000000008",
     session_id: callSessions[2].id,
     role: "SYSTEM",
+    input_kind: "VOICE",
     text: "네, 식사 후에 꼭 챙겨 드세요. 오늘 기분은 어떠세요?",
     created_at: "2026-07-05T19:00:48+09:00",
   },
@@ -284,6 +304,7 @@ export const callTurns: CallTurn[] = [
     id: "d0000000-0000-4000-8000-000000000009",
     session_id: callSessions[2].id,
     role: "SENIOR",
+    input_kind: "VOICE",
     text: "그냥 그래. 좀 피곤하네.",
     created_at: "2026-07-05T19:01:05+09:00",
   },
@@ -292,6 +313,7 @@ export const callTurns: CallTurn[] = [
     id: "d0000000-0000-4000-8000-000000000010",
     session_id: callSessions[4].id,
     role: "SYSTEM",
+    input_kind: "VOICE",
     text: "어머니, 아침 혈압약 드셨나요?",
     created_at: "2026-07-04T09:00:16+09:00",
   },
@@ -299,6 +321,7 @@ export const callTurns: CallTurn[] = [
     id: "d0000000-0000-4000-8000-000000000011",
     session_id: callSessions[4].id,
     role: "SENIOR",
+    input_kind: "VOICE",
     text: "어... 그거 뭐라고? 잘 안 들려.",
     created_at: "2026-07-04T09:00:30+09:00",
   },
@@ -306,6 +329,7 @@ export const callTurns: CallTurn[] = [
     id: "d0000000-0000-4000-8000-000000000012",
     session_id: callSessions[4].id,
     role: "SYSTEM",
+    input_kind: "VOICE",
     text: "혈압약 드셨는지 여쭤봤어요. 드셨으면 1번, 아직이면 2번을 눌러주세요.",
     created_at: "2026-07-04T09:00:44+09:00",
   },
@@ -313,6 +337,7 @@ export const callTurns: CallTurn[] = [
     id: "d0000000-0000-4000-8000-000000000013",
     session_id: callSessions[4].id,
     role: "SENIOR",
+    input_kind: "VOICE",
     text: "(응답 불명확)",
     created_at: "2026-07-04T09:00:52+09:00",
   },
@@ -392,7 +417,8 @@ export const callReports: CallReport[] = [
 export function seniorById(id: string): Senior | undefined {
   return seniors.find((s) => s.id === id);
 }
-export function scheduleById(id: string): Schedule | undefined {
+export function scheduleById(id: string | null): Schedule | undefined {
+  if (id === null) return undefined;
   return schedules.find((s) => s.id === id);
 }
 export function sessionById(id: string): CallSession | undefined {

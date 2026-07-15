@@ -35,8 +35,8 @@
 - **절대 억지로 DONE/NOT_DONE 판정하지 말 것. 불확실하면 UNCERTAIN.**
 
 ## 데이터 모델
-- `guardians`, `seniors`(+ `consent_at`, `consent_by` 동의 기록), `schedules`(RRULE, 발신 ON/OFF)
-- `call_sessions`(상태 기계, 시도횟수, **`cost_krw numeric` — 통화당 실원가(회선+STT+LLM+TTS 합산) 기록, 벤더 무관 필수**)
+- `guardians`, `seniors`(+ `consent_at`, `consent_by` 대리동의, `self_consent_at` 본인 동의 — 동의 콜에서 확보, 실발신은 둘 다 필요), `schedules`(RRULE, 발신 ON/OFF)
+- `call_sessions`(상태 기계, 시도횟수, `purpose` SCHEDULE|CONSENT — 동의 콜 구분(전기통신사업법 대응), **`cost_krw numeric` — 통화당 실원가(회선+STT+LLM+TTS 합산) 기록, 벤더 무관 필수**)
 - `call_turns`, `call_reports`(adherence_status: DONE|NOT_DONE|POSTPONED|UNCERTAIN|MISSED, summary, mood_flag, health_flag, prompt_version)
 - `cta_events`(VIEW|CLICK_SUBSCRIBE|CLICK_TRY|WAITLIST_SUBMIT, utm 3종, session_uuid), `waitlist`
 - 녹음 원본 미저장(전사만). PII 로그 마스킹.

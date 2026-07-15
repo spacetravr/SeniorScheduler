@@ -17,6 +17,12 @@ export const seniorSchema = z.object({
   /** 통화 녹취·전사 저장 보호자 대리동의 시각 — null이면 실발신 금지 (가드레일 5) */
   consent_at: z.string().datetime({ offset: true }).nullable(),
   consent_by: z.string().uuid().nullable(),
+  /**
+   * 부모님 본인 동의 시각 — 동의 콜(CONSENT 세션)에서 본인이 음성/버튼으로 동의한 기록.
+   * 전기통신사업법 자동발신 대응: 실발신 정책은 consent_at(대리)과 self_consent_at(본인) 둘 다 필요.
+   * Mock 단계에서는 시뮬레이션으로 기록.
+   */
+  self_consent_at: z.string().datetime({ offset: true }).nullable(),
   created_at: z.string().datetime({ offset: true }),
 });
 export type Senior = z.infer<typeof seniorSchema>;
@@ -63,9 +69,18 @@ export const callSessionStatusLabel: Record<(typeof CALL_SESSION_STATUSES)[numbe
   MISSED: "불발",
 };
 
+/** 통화 목적 — SCHEDULE: 일정 확인 콜 / CONSENT: 최초 본인 동의 콜 (schedule_id 없음) */
+export const CALL_PURPOSES = ["SCHEDULE", "CONSENT"] as const;
+export const callPurposeLabel: Record<(typeof CALL_PURPOSES)[number], string> = {
+  SCHEDULE: "일정 확인",
+  CONSENT: "동의 확인",
+};
+
 export const callSessionSchema = z.object({
   id: z.string().uuid(),
-  schedule_id: z.string().uuid(),
+  purpose: z.enum(CALL_PURPOSES),
+  /** CONSENT 콜은 일정 없이 발신되므로 nullable */
+  schedule_id: z.string().uuid().nullable(),
   senior_id: z.string().uuid(),
   status: z.enum(CALL_SESSION_STATUSES),
   attempt: z.number().int().min(1).max(3),
@@ -83,6 +98,8 @@ export const callTurnSchema = z.object({
   id: z.string().uuid(),
   session_id: z.string().uuid(),
   role: z.enum(["SYSTEM", "SENIOR"]),
+  /** SENIOR 턴의 입력 방식 — 분류 규칙은 DTMF 우선 (SYSTEM 턴은 VOICE 고정) */
+  input_kind: z.enum(["VOICE", "DTMF"]),
   text: z.string(),
   created_at: z.string().datetime({ offset: true }),
 });
