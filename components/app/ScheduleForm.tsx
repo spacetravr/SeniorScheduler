@@ -111,7 +111,7 @@ export function ScheduleForm(props: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-4 rounded-base border border-surface p-5"
+      className="flex flex-col gap-4 rounded-base border border-border bg-bg p-5 shadow-card"
     >
       <h2 className="text-base font-semibold">
         {isEdit ? "일정 수정" : "새 일정 등록"}
@@ -123,7 +123,7 @@ export function ScheduleForm(props: Props) {
           name="senior_id"
           required
           defaultValue={s?.senior_id ?? props.seniors[0]?.id}
-          className="rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
+          className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
         >
           {props.seniors.map((sr) => (
             <option key={sr.id} value={sr.id}>
@@ -140,7 +140,7 @@ export function ScheduleForm(props: Props) {
             name="type"
             required
             defaultValue={s?.type ?? "MEDICATION"}
-            className="rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
+            className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
           >
             {SCHEDULE_TYPES.map((t) => (
               <option key={t} value={t}>
@@ -156,7 +156,7 @@ export function ScheduleForm(props: Props) {
             type="time"
             required
             defaultValue={s?.call_time ?? "09:00"}
-            className="rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
+            className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
           />
         </label>
       </div>
@@ -169,7 +169,7 @@ export function ScheduleForm(props: Props) {
           maxLength={100}
           defaultValue={s?.title}
           placeholder="예: 아침 혈압약"
-          className="rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
+          className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
         />
       </label>
 
@@ -182,7 +182,7 @@ export function ScheduleForm(props: Props) {
           rows={3}
           defaultValue={s?.script_template}
           placeholder={SCRIPT_PLACEHOLDER}
-          className="resize-none rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
+          className="resize-none rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
         />
       </label>
 
@@ -244,7 +244,7 @@ export function ScheduleForm(props: Props) {
             type="button"
             onClick={() => props.onDone?.()}
             disabled={pending}
-            className="flex-1 rounded-base border border-surface px-4 py-3 font-semibold text-text-muted disabled:opacity-50"
+            className="flex-1 rounded-base border border-border px-4 py-3 font-semibold text-text-muted transition-colors hover:bg-surface disabled:opacity-50"
           >
             취소
           </button>

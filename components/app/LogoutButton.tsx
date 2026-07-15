@@ -7,7 +7,7 @@ export function LogoutButton() {
     <form action="/api/auth/logout" method="post">
       <button
         type="submit"
-        className="w-full rounded-base border border-surface px-4 py-3 text-sm font-semibold text-text-muted"
+        className="w-full rounded-base border border-border px-4 py-3 text-sm font-semibold text-text-muted transition-colors hover:bg-surface"
       >
         로그아웃
       </button>

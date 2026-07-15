@@ -22,7 +22,7 @@ export default async function SettingsPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold">계정</h2>
-        <div className="flex items-center justify-between gap-4 rounded-base border border-surface p-4">
+        <div className="flex items-center justify-between gap-4 rounded-base border border-border bg-bg p-4 shadow-card">
           <div className="flex flex-col gap-0.5">
             <span className="text-sm text-text-muted">로그인 이메일</span>
             <span className="font-medium">{email}</span>
@@ -32,7 +32,7 @@ export default async function SettingsPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold">비밀번호</h2>
-        <div className="rounded-base border border-surface p-4">
+        <div className="rounded-base border border-border bg-bg p-4 shadow-card">
           <PasswordChangeForm />
         </div>
       </section>

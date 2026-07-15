@@ -9,6 +9,7 @@
  */
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { MailCheck } from "lucide-react";
 import {
   signInWithPassword,
   signUpWithPassword,
@@ -167,11 +168,9 @@ export function LoginForm() {
         {notice ? (
           <div
             role="status"
-            className="flex flex-col gap-1.5 rounded-base bg-surface px-4 py-3 text-center"
+            className="flex flex-col items-center gap-1.5 rounded-base bg-surface px-4 py-3 text-center"
           >
-            <span className="text-lg" aria-hidden>
-              📬
-            </span>
+            <MailCheck className="h-6 w-6 text-primary" aria-hidden strokeWidth={1.75} />
             <p className="text-sm font-medium leading-relaxed">{notice}</p>
           </div>
         ) : null}
@@ -229,11 +228,9 @@ function MagicLinkFallback() {
         sentTo ? (
           <div
             role="status"
-            className="mt-4 flex flex-col gap-1.5 rounded-base bg-surface px-4 py-3 text-center"
+            className="mt-4 flex flex-col items-center gap-1.5 rounded-base bg-surface px-4 py-3 text-center"
           >
-            <span className="text-lg" aria-hidden>
-              📬
-            </span>
+            <MailCheck className="h-6 w-6 text-primary" aria-hidden strokeWidth={1.75} />
             <p className="text-sm font-medium">메일함을 확인해 주세요</p>
             <p className="text-sm leading-relaxed text-text-muted">
               {message ?? "로그인 링크를 이메일로 보냈어요."}

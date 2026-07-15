@@ -60,7 +60,7 @@ export function SeniorForm(props: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-4 rounded-base border border-surface p-5"
+      className="flex flex-col gap-4 rounded-base border border-border bg-bg p-5 shadow-card"
     >
       <h2 className="text-base font-semibold">
         {isEdit ? "피보호자 정보 수정" : "새 피보호자 등록"}
@@ -74,7 +74,7 @@ export function SeniorForm(props: Props) {
           maxLength={50}
           defaultValue={s?.name}
           placeholder="예: 김순자"
-          className="rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
+          className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
         />
       </label>
 
@@ -86,7 +86,7 @@ export function SeniorForm(props: Props) {
           inputMode="tel"
           defaultValue={s?.phone}
           placeholder="예: 010-1234-5678"
-          className="rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
+          className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
         />
       </label>
 
@@ -97,7 +97,7 @@ export function SeniorForm(props: Props) {
             name="relationship"
             required
             defaultValue={s?.relationship ?? "모"}
-            className="rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
+            className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
           >
             {RELATIONSHIPS.map((r) => (
               <option key={r} value={r}>
@@ -115,7 +115,7 @@ export function SeniorForm(props: Props) {
             max={2000}
             defaultValue={s?.birth_year ?? undefined}
             placeholder="예: 1948"
-            className="rounded-base border border-surface bg-bg px-3 py-2.5 outline-none focus:border-primary"
+            className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
           />
         </label>
       </div>
@@ -148,7 +148,7 @@ export function SeniorForm(props: Props) {
             type="button"
             onClick={() => props.onDone?.()}
             disabled={pending}
-            className="flex-1 rounded-base border border-surface px-4 py-3 font-semibold text-text-muted disabled:opacity-50"
+            className="flex-1 rounded-base border border-border px-4 py-3 font-semibold text-text-muted transition-colors hover:bg-surface disabled:opacity-50"
           >
             취소
           </button>
