@@ -27,16 +27,22 @@
 - 통합 main: tsc·**테스트 139/139**·빌드 통과. **⚠️ 이 분량은 아직 프로덕션 미배포** (main에만 머지됨)
 - worktree 격리 병렬이 정상 작동 (충돌 0). 단 worktree가 저장소 내부(.claude/worktrees)에 생겨 vitest 이중 집계 — worktree 제거로 해소, vitest exclude 추가는 후속 과제
 
-### 다음 할 일
-0. **배포 대기**: 통화 화면+새 디자인 분량 `vercel deploy --prod` (사용자 승인 필요)
-1. ~~**[사용자]** Supabase SQL Editor에서 `supabase/migrations/0003_call_pipeline.sql` 실행~~ ✅ 완료 (2026-07-15, REST 검증됨)
-2. **[사용자]** CRON_SECRET 생성 → Vercel env + GitHub secret(CRON_SECRET) 동일값, GitHub secret DISPATCH_URL=`https://seniorscheduler.vercel.app/api/cron/dispatch-calls`
-3. 1번 후 배포(/ship) → Mock 파이프라인 E2E 확인(일정 ON→디스패치→리포트)
-4. ui-builder: /app/calls·/app/reports mock→실데이터 전환 (쿼리 준비됨: getCallSessions/getCallSessionDetail/getRecentReports)
-5. CONSENT 콜 자동 트리거 연결(피보호자 등록 직후) — 엔진은 있음, 디스패치 연결만 남음
-6. (선택) ANTHROPIC_API_KEY — 없어도 룰 분류로 동작(현 기본)
-7. [사용자] ign8t 기획 수정(FastAPI→Next.js 풀스택/네이티브 앱→모바일 웹/동의 콜 태스크), 전기통신사업법 자문(실발신 전 필수)
-8. 기존 대기 항목 유지: 링크 배포(설문·카페), Analytics Enable 확인, ADMIN_PASSWORD 변경
+### 현재 상태 스냅샷 (세션 #6 종료 시점 — 다음 세션은 여기부터)
+- **main(de27fa9) = 통화 파이프라인(Mock)+동의 UI+통화 화면 실데이터+새 디자인 전부 머지·push 완료. 테스트 139/139.**
+- **프로덕션은 중간 시점(f84ca83) 버전**: 파이프라인+동의 UI까지만 반영됨. **통화 화면 실데이터+새 디자인(웜 팔레트)은 미배포** — 배포는 사용자 승인 대기
+- 준비 완료 상태: 0003 마이그레이션 적용됨(REST 검증) / CRON_SECRET·DISPATCH_URL 등록됨 / **call-dispatch 워크플로 disabled_manually** (사용자 지시로 발신 꺼둠 — E2E 시 `gh workflow enable call-dispatch.yml`)
+- ign8t MCP는 local scope 등록됨 — **다음 세션부터 도구 자동 로드** (이번 세션은 stdio 직접 호출 스크립트로 사용했음)
+- gh CLI 인증: `git credential fill`(protocol=https/host=github.com를 파일로 stdin 리다이렉트)로 GCM 토큰 꺼내 GH_TOKEN에 주입하는 방식 사용
+
+### 다음 할 일 (우선순위순)
+1. **배포** (사용자 "배포해줘" 시): `vercel deploy --prod` → /smoke prod → 새 디자인·통화 화면 확인 → 색감 피드백 있으면 globals.css 토큰 값만 조정
+2. **Mock 파이프라인 E2E 시연** (원하면): call-dispatch enable → 테스트 일정 ON → 디스패치 → /app/calls·/app/reports에 실데이터 표시 확인 → 데이터 정리 → 다시 disable
+3. **CONSENT 콜 자동 트리거 연결** (피보호자 등록 직후 동의 콜 예약 — 엔진 있음, 디스패치 연결만. data 레인)
+4. **앱 내부 디자인 폴리시 2차** (통화 화면 머지로 이제 가능): components/app에 shadow-card·border 토큰 적용, 이모지→lucide 아이콘 검토
+5. vitest.config.ts에 `.claude/worktrees/**` exclude 추가 (worktree 병렬 시 이중 집계 방지 — 1줄, data 레인)
+6. (선택) ANTHROPIC_API_KEY — 없어도 룰 분류로 동작(현 기본) / 랜딩 Status Quo 카피(사용자 승인 대기)
+7. [사용자] ign8t 기획 수정(FastAPI→Next.js 풀스택/네이티브 앱→모바일 웹/동의 콜 태스크 추가), 전기통신사업법 자문(실발신 전 필수), **계정 임시 비밀번호 변경**(세션 #4 로그에 평문 기록돼 있고 저장소가 공개임 — /app/settings에서 변경)
+8. 기존 대기 항목: 링크 배포(설문·카페), Analytics Enable 확인, ADMIN_PASSWORD 변경
 
 ### 결정사항
 - **v2 별도 트랙 폐기 → 기존 웹 통합** (2026-07-15 사용자): ign8t 백로그를 기존 저장소 로드맵에 매핑. SECOND-PLAN.md 「최종 결정」이 상세 기록
