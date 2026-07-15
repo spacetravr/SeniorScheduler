@@ -26,10 +26,68 @@ import {
  */
 
 /** SENIOR 응답 턴만 뽑아 분류 입력으로 변환. */
-function toResponses(turns: CollectedTurn[]): SeniorResponse[] {
+export function toResponses(turns: CollectedTurn[]): SeniorResponse[] {
   return turns
     .filter((t) => t.role === "SENIOR")
     .map((t) => ({ text: t.text, input_kind: t.input_kind }));
+}
+
+/**
+ * 수집된 턴 → 분류·리포트 생성 (SCHEDULE 콜의 "두뇌" 재사용 단일 지점).
+ *
+ * mock 동기 경로(runScheduleCall)와 실벤더 비동기 콜백 경로(telephony/callback)가 모두
+ * 이 함수를 재사용해 중복 구현을 막는다. 규칙:
+ *   - 마지막 SENIOR 응답은 기분 질문 답(판정 제외) → classify 입력에서 뺀다.
+ *     (mock 시나리오는 항상 기분 응답이 마지막 SENIOR 턴이므로 동작 불변.)
+ *   - flag 감지(mood/health)는 전체 SENIOR 텍스트를 대상으로 한다(기분 답 포함).
+ *   - LLM 원가는 classify 소비분만 합산한다(리포트 요약 호출은 기존 동작대로 미합산).
+ *
+ * @returns report 와 LLM 사용 원가(KRW). 회선/STT/TTS 원가는 어댑터/콜백이 별도 합산.
+ */
+export async function classifyAndReportSchedule(args: {
+  turns: CollectedTurn[];
+  scheduleTitle: string;
+  answered: boolean;
+  attempts: number;
+  llm: LlmClient;
+}): Promise<{ report: GeneratedReport; llmCostKrw: number }> {
+  const { turns, scheduleTitle, answered, attempts, llm } = args;
+  const responses = toResponses(turns);
+
+  // 마지막 SENIOR 응답 = 기분 답(있으면). 판정 입력에서 분리.
+  const moodText = answered && responses.length > 0 ? responses[responses.length - 1].text : null;
+  const classifyInput = answered && responses.length > 0 ? responses.slice(0, -1) : [];
+
+  const classification = answered
+    ? await classify(classifyInput.length > 0 ? classifyInput : responses, llm)
+    : { status: "UNCERTAIN" as const, method: "NONE" as const };
+
+  // LLM 사용분 원가(가드레일 3 상한 내) — classify 직후 관측(기존 순서 보존).
+  const llmCostKrw = llm.callsUsed() * MOCK_COST.LLM_PER_CALL;
+
+  const report = await generateReport(
+    {
+      answered,
+      adherenceStatus: classification.status,
+      scheduleTitle,
+      moodText,
+      attempts,
+      seniorTexts: responses.map((r) => r.text),
+    },
+    llm,
+  );
+
+  return { report, llmCostKrw };
+}
+
+/** 수집된 턴 → 본인 동의 성사 여부. 마지막 SENIOR 응답으로 판정(GRANTED 만 성사). */
+export function evaluateConsentGranted(turns: CollectedTurn[], answered: boolean): boolean {
+  if (!answered) return false;
+  const seniorResp = turns.filter((t) => t.role === "SENIOR").at(-1);
+  return (
+    seniorResp != null &&
+    classifyConsent({ text: seniorResp.text, input_kind: seniorResp.input_kind }) === "GRANTED"
+  );
 }
 
 export type ScheduleCallResult = {
@@ -62,7 +120,6 @@ export async function runScheduleCall(args: {
   let lastTurns: CollectedTurn[] = [];
   let startedAt: string | null = null;
   let endedAt: string | null = null;
-  let moodText: string | null = null;
 
   // 재시도 소진까지 시도. clock 은 시도마다 지연만큼 전진.
   let baseMs = clock().getTime();
@@ -74,24 +131,19 @@ export async function runScheduleCall(args: {
     const runScript = async (io: ScriptIO): Promise<void> => {
       await io.say(script.intro);
       const first = await io.collect(script.ask);
-      const collected: SeniorResponse[] = [];
-      if (first) collected.push({ text: first.text, input_kind: first.input_kind });
 
       // 룰로 즉시 확정되지 않으면 1회 재질문(ARS+ 규칙).
       const firstRuled = first ? classifyByRules({ text: first.text, input_kind: first.input_kind }) : null;
       if (first && !firstRuled) {
         await io.say(script.reask);
-        const second = await io.collect(script.reask);
-        if (second) collected.push({ text: second.text, input_kind: second.input_kind });
+        await io.collect(script.reask);
       }
 
       // 기분 질문 1턴(저장만, 판정 안 함).
       await io.say(script.mood);
-      const mood = await io.collect(script.mood);
-      if (mood) moodText = mood.text;
+      await io.collect(script.mood);
 
       await io.say(script.closing);
-      // collected 는 result.turns 로도 재구성 가능하므로 별도 반환 불필요.
     };
 
     const result = await adapter.initiateCall(
@@ -117,27 +169,16 @@ export async function runScheduleCall(args: {
   }
 
   const answered = state.status === "COMPLETED";
-  const responses = toResponses(lastTurns);
-  // 기분 응답은 판정에서 제외(마지막 SENIOR 턴이 기분 응답이므로 분류 입력에서 뺀다).
-  const classifyInput = answered && responses.length > 0 ? responses.slice(0, -1) : [];
-  const classification = answered
-    ? await classify(classifyInput.length > 0 ? classifyInput : responses, llm)
-    : { status: "UNCERTAIN" as const, method: "NONE" as const };
 
-  // LLM 사용분 원가 합산(가드레일 3 상한 내).
-  totalCost += llm.callsUsed() * MOCK_COST.LLM_PER_CALL;
-
-  const report = await generateReport(
-    {
-      answered,
-      adherenceStatus: classification.status,
-      scheduleTitle: schedule.title,
-      moodText,
-      attempts: state.attempt,
-      seniorTexts: responses.map((r) => r.text),
-    },
+  // 분류·리포트는 콜백 경로와 공유하는 단일 지점(classifyAndReportSchedule)에 위임.
+  const { report, llmCostKrw } = await classifyAndReportSchedule({
+    turns: lastTurns,
+    scheduleTitle: schedule.title,
+    answered,
+    attempts: state.attempt,
     llm,
-  );
+  });
+  totalCost += llmCostKrw;
 
   return {
     status: answered ? "COMPLETED" : "MISSED",
@@ -210,11 +251,8 @@ export async function runConsentCall(args: {
   }
 
   const answered = state.status === "COMPLETED";
-  // 성사 시 마지막 SENIOR 응답으로 동의 여부 재판정(기록 결정).
-  const seniorResp = lastTurns.filter((t) => t.role === "SENIOR").at(-1);
-  const consentGranted =
-    answered && seniorResp != null &&
-    classifyConsent({ text: seniorResp.text, input_kind: seniorResp.input_kind }) === "GRANTED";
+  // 성사 시 마지막 SENIOR 응답으로 동의 여부 재판정(콜백 경로와 공유 함수).
+  const consentGranted = evaluateConsentGranted(lastTurns, answered);
 
   return {
     status: answered ? "COMPLETED" : "MISSED",

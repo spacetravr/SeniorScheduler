@@ -65,10 +65,54 @@ export type CallResult = {
 /** 주입 가능한 시계 — 테스트 재현성(Date.now 직접 호출 금지). */
 export type Clock = () => Date;
 
+/**
+ * 실벤더 비동기 발신 트리거 파라미터 (mock 의 동기 runScript 모델과 별개).
+ *
+ * 실벤더는 "발신만 요청 → 벤더가 통화 진행 → 결과를 콜백으로 통지" 하는 비동기 모델이다.
+ * 따라서 대화 스크립트(runScript)를 주입하지 않고, 발신 대상·세션 식별자만 넘긴다.
+ * 벤더는 통화 종료 후 sessionId 를 그대로 되돌려 주는 콜백을 우리 수신부로 보낸다.
+ */
+export type TriggerCallParams = {
+  /** 우리 call_sessions.id — 벤더 콜백이 이 값을 그대로 echo 해야 세션 매칭 가능. */
+  sessionId: string;
+  seniorId: string;
+  /** 국내 로컬 포맷(domain.ts phone). 어댑터가 벤더 규격으로 정규화. */
+  to: string;
+  purpose: "SCHEDULE" | "CONSENT";
+};
+
+/** 발신 트리거 결과 — 즉시 반환(통화 결과 아님, 결과는 콜백). */
+export type TriggerCallResult = {
+  /** 벤더가 부여한 통화 식별자(있으면). 콜백 매칭 보조·로깅용. */
+  providerCallId: string | null;
+};
+
+/**
+ * 텔레포니 설정 미비/미구현 오류.
+ *
+ * 실벤더 모드인데 필수 설정이 없거나(설정 검증은 provider.ts 가 선처리), 어댑터가 아직
+ * 실제 HTTP 연동을 구현하지 않았을 때 던진다. 디스패치 라우트는 이 오류를 잡아
+ * **조용한 mock 폴백 없이** 해당 세션을 skip 한다(실환경에서 가짜 통화 기록 금지).
+ */
+export class TelephonyNotConfiguredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TelephonyNotConfiguredError";
+  }
+}
+
 export interface TelephonyAdapter {
   /**
-   * 발신 1회 시도. 응답 시 ANSWERED + 턴, 무응답 시 NO_ANSWER.
+   * 발신 1회 시도(동기 대화-드라이버 모델 — MockAdapter 전용).
+   * 응답 시 ANSWERED + 턴, 무응답 시 NO_ANSWER.
    * 재시도(1분/10분) 스케줄은 흐름 엔진 책임 — 어댑터는 단일 시도만 담당.
+   * 실벤더 어댑터는 이 동기 모델을 지원하지 않으므로 TelephonyNotConfiguredError 를 던진다.
    */
   initiateCall(params: InitiateCallParams, clock: Clock): Promise<CallResult>;
+
+  /**
+   * 비동기 발신 트리거(실벤더 모델). 발신만 요청하고 즉시 반환 — 통화 결과는 콜백으로.
+   * MockAdapter 는 동기 모델을 쓰므로 구현하지 않는다(선택적).
+   */
+  triggerCall?(params: TriggerCallParams): Promise<TriggerCallResult>;
 }
