@@ -6,6 +6,42 @@
 
 ---
 
+## 2026-07-15 — 세션 #6: ign8t·파운더리 종합 + Phase 3 통화 파이프라인(Mock) 완성
+
+### 완료
+- **ign8t MCP 연동** (local scope, `~/.claude.json` — 키 비커밋. 세션 재시작 후 도구 로드, 그 전엔 stdio 직접 호출 스크립트로 사용). Spec 4종+백로그 확인, 완료된 UI 태스크 3건 done 동기화
+- **파운더리 분석 수확**: ⚠️ **전기통신사업법 자동발신 규제**(우리 문서에 없던 유일한 중대 리스크) → 동의 콜 설계로 반영. 이중 KPI(자녀 NPS↔부모 수락률), Status Quo 마케팅 프레이밍(랜딩 카피 후보). 파운더리 생성 코드(케어콜)는 검토 후 이식 불가 판정(스택 충돌·핵심 부재) — 디자인 시안으로만 보존
+- **Phase 3 완성** (data-api → reviewer PASS → 머지 c0cca22): 0003 마이그레이션(통화 3테이블+self_consent_at+RLS) / TelephonyAdapter+MockAdapter(결정적 시나리오) / 분류기(DTMF→키워드 룰→LLM→UNCERTAIN, eval 케이스 포함) / 상태 기계·재시도(1분/10분→MISSED) / 동의 콜(CONSENT) 엔진 / cost_krw 합산 / cron 라우트(CRON_SECRET)+GitHub Actions 5분 주기(공개 repo라 분량 무료, 시크릿 미등록 시 조용히 재시도)
+- **동의 상태 UI** (ui-builder → reviewer PASS → 머지 1348ccc): 피보호자 카드 3단계 뱃지(동의 필요/본인 동의 대기/동의 완료)+폼 안내+대시보드 배너. DB 컬럼 없어도 안전(nullish)
+- 통합 main: tsc·**테스트 134/134**·빌드 통과 (테스트 수 기준선: 71→134)
+- ⚠️ 병렬 에이전트 사고 예방 1건: 같은 워킹트리에서 ui-builder가 브랜치 전환 → data-api 미커밋 작업물 노출. SendMessage로 커밋 절차 지시해 무사고 수습. **다음부터 병렬 에이전트는 git worktree 격리 필수**
+
+### 🚨 배포 게이트 (순서 중요)
+- **0003 마이그레이션 실행 전에 prod 배포 금지** — queries의 SENIOR_COLS가 self_consent_at을 조회하므로 컬럼 없는 prod DB에 배포하면 /app/seniors 깨짐. 순서: ①0003 실행 → ②배포
+
+### 다음 할 일
+1. **[사용자]** Supabase SQL Editor에서 `supabase/migrations/0003_call_pipeline.sql` 실행
+2. **[사용자]** CRON_SECRET 생성 → Vercel env + GitHub secret(CRON_SECRET) 동일값, GitHub secret DISPATCH_URL=`https://seniorscheduler.vercel.app/api/cron/dispatch-calls`
+3. 1번 후 배포(/ship) → Mock 파이프라인 E2E 확인(일정 ON→디스패치→리포트)
+4. ui-builder: /app/calls·/app/reports mock→실데이터 전환 (쿼리 준비됨: getCallSessions/getCallSessionDetail/getRecentReports)
+5. CONSENT 콜 자동 트리거 연결(피보호자 등록 직후) — 엔진은 있음, 디스패치 연결만 남음
+6. (선택) ANTHROPIC_API_KEY — 없어도 룰 분류로 동작(현 기본)
+7. [사용자] ign8t 기획 수정(FastAPI→Next.js 풀스택/네이티브 앱→모바일 웹/동의 콜 태스크), 전기통신사업법 자문(실발신 전 필수)
+8. 기존 대기 항목 유지: 링크 배포(설문·카페), Analytics Enable 확인, ADMIN_PASSWORD 변경
+
+### 결정사항
+- **v2 별도 트랙 폐기 → 기존 웹 통합** (2026-07-15 사용자): ign8t 백로그를 기존 저장소 로드맵에 매핑. SECOND-PLAN.md 「최종 결정」이 상세 기록
+- **파운더리 역할 = 분석·시안 생성기** (코드 본선은 이 저장소). 케어콜 팔레트(#F5EFE6/#1E3A5F/#5B9BD5)·lucide 아이콘·KPI 카드 패턴은 디자인 확정 시 입력값
+- **테스트 실행 정책** (사용자 지시, CLAUDE.md 명문화): 브랜치 완료 시 / reviewer 머지 게이트 / 배포 전 스모크 3지점만. 작성 의무 유지
+- **모델 배분 재확인** (사용자 지시): 오케스트레이터=Fable, ui/data=Opus 4.8, reviewer=Sonnet (기존과 동일)
+- 실발신 정책: consent_at(대리)+self_consent_at(본인) 둘 다 필요. 녹음 정책 절충(UNCERTAIN 클립 저장 여부)은 실발신 전 결정 항목
+- 랜딩 Status Quo 카피 적용은 사용자 승인 대기 중
+
+### 블로커
+- 없음 (배포만 0003 실행에 종속)
+
+---
+
 ## 2026-07-13 — 세션 #5: 도구·자동화 A항목 + 일일 지표 리포트 (병렬 에이전트 3개로 수행)
 
 ### 완료
