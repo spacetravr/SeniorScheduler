@@ -9,9 +9,12 @@ import type { Senior } from "@/lib/contracts/domain";
 import { setSeniorConsent, deleteSenior } from "@/lib/actions/seniors";
 import { fmtDate } from "@/components/app/format";
 import { SeniorForm } from "@/components/app/SeniorForm";
+import { ConsentBadge } from "@/components/app/StatusBadge";
+import { getConsentStatus, SELF_CONSENT_PENDING_HINT } from "@/components/app/consent";
 
 export function SeniorItem({ senior }: { senior: Senior }) {
   const consented = Boolean(senior.consent_at);
+  const consentStatus = getConsentStatus(senior);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -61,16 +64,21 @@ export function SeniorItem({ senior }: { senior: Senior }) {
             {senior.phone}
           </span>
         </div>
-        {consented ? (
-          <span className="inline-flex shrink-0 items-center rounded-base bg-primary px-2.5 py-1 text-xs font-semibold text-bg">
-            동의 완료 · {fmtDate(senior.consent_at!)}
-          </span>
-        ) : (
-          <span className="inline-flex shrink-0 items-center rounded-base border border-accent px-2.5 py-1 text-xs font-semibold text-accent">
-            동의 대기
-          </span>
-        )}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <ConsentBadge senior={senior} />
+          {consentStatus === "DONE" ? (
+            <span className="text-xs text-text-muted tabular-nums">
+              {fmtDate(senior.consent_at!)} 완료
+            </span>
+          ) : null}
+        </div>
       </div>
+
+      {consentStatus === "SELF_PENDING" ? (
+        <p className="break-keep rounded-base bg-surface px-3 py-2 text-xs leading-relaxed text-text-muted">
+          {SELF_CONSENT_PENDING_HINT}
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         <button

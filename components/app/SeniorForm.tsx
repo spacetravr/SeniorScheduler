@@ -122,18 +122,24 @@ export function SeniorForm(props: Props) {
 
       {/* 동의 체크박스 — create 모드에서만(가드레일 5) */}
       {!isEdit ? (
-        <label className="flex items-start gap-3 rounded-base bg-surface p-4 text-sm leading-relaxed">
-          <input
-            type="checkbox"
-            checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
-            className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
-          />
-          <span>
-            통화 녹취·전사 저장에 대해 부모님을 대신해 동의합니다. (첫 통화 시
-            부모님께도 음성으로 안내됩니다)
-          </span>
-        </label>
+        <div className="flex flex-col gap-2">
+          <label className="flex items-start gap-3 rounded-base bg-surface p-4 text-sm leading-relaxed">
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => setConsent(e.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
+            />
+            <span>
+              통화 녹취·전사 저장에 대해 부모님을 대신해 동의합니다. (첫 통화 시
+              부모님께도 음성으로 안내됩니다)
+            </span>
+          </label>
+          <p className="px-1 text-xs leading-relaxed text-text-muted">
+            등록 후 첫 전화는 부모님 본인 동의를 확인하는 통화입니다. 부모님이
+            동의하시면 일정 전화가 시작됩니다.
+          </p>
+        </div>
       ) : null}
 
       <div className="flex gap-2">
