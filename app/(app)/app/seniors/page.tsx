@@ -3,7 +3,7 @@
  */
 import { Users } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
-import { SeniorForm } from "@/components/app/SeniorForm";
+import { SeniorFormModal } from "@/components/app/SeniorFormModal";
 import { SeniorItem } from "@/components/app/SeniorItem";
 import { EmptyState } from "@/components/app/EmptyState";
 import { getSeniors } from "@/lib/db/queries";
@@ -18,6 +18,7 @@ export default async function SeniorsPage() {
       <PageHeader
         title="피보호자"
         subtitle="부모님을 등록하고 동의 상태를 관리합니다."
+        action={<SeniorFormModal variant="primary" />}
       />
 
       {seniors.length === 0 ? (
@@ -33,8 +34,6 @@ export default async function SeniorsPage() {
           ))}
         </section>
       )}
-
-      <SeniorForm mode="create" />
     </div>
   );
 }
