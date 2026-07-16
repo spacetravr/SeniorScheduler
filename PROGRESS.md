@@ -6,6 +6,38 @@
 
 ---
 
+## 세션 #8 (2026-07-16) — 🎉 실콜 E2E 성공 + 실측 버그 발견 + CLOVA 트랙 본격 가동
+
+### 실콜 E2E 결과 (프로덕션 실경로 2콜 완주 — 총 120원)
+- **성공 확인**: 스케줄→디스패치(dispatched:1)→ClawOps 발신→수신·시나리오 재생→상태 콜백(initiated/in-progress/completed)→상태 기계→리포트 생성→cost_krw 기록. **전 구간 실작동**
+- **실측으로 잡은 발신 차단 버그 2건 (수정·배포 완료)**:
+  ① 프로덕션 env 등록 사고 — CRON_SECRET·CLAWOPS 4종이 **빈 값**으로 등록돼 있었음 → 전부 재등록+재배포로 해결 (교훈: env 등록 후 반드시 실호출 검증)
+  ② **From 번호는 E.164 변환 금지** — 계정 등록 형식(07052753827) 그대로 보내야 함, +82 변환 시 HTTP 400 거절 (핫픽스 51af3bf 배포됨). 발신 응답은 camelCase `callId`
+- **실측 발견 (수정 진행 중 — feat/data-realcall-fixes, data-api 에이전트)**:
+  ① Gather **speech 입력이 action을 트리거하지 않음** (7회 발화, step 진행 0회) → 적응형 듣기 회귀, 시나리오를 단일 문서(Pause 기반)로 재구성 중
+  ② **전사 생성이 통화 종료 후 수십 초 소요** — 콜백의 4.5초 재시도로는 항상 미확보 → 재시도 연장+디스패치 백필 단계 추가 중. 전사 자체는 완벽 (speaker AGENT/CUSTOMER, "먹었어" 등 전부 수집됨)
+  ③ 리포트 summary 잘림("어르신께 저녁 약 복") — Gemini 출력 설정 조사 중
+  ④ ClawOps가 **자동 녹음** (recording.uploaded 이벤트, recordingUrl 존재) — 우리 정책(전사만) 위반 상태. Record:false 파라미터 시도 예정 + 벤더 확인 필요. **기존 테스트 콜 2건 녹음 삭제도 필요**
+  ⑤ answeredBy 실값 "unknown" 관찰 → human 취급 매핑 확정 중
+- **품질 평가 (사용자)**: TTS 어색·응답 인식 안 됨 → **CLOVA AiCall 전환 검토 본격화**
+
+### CLOVA AiCall 트랙 (사용자 직접 진행 중 — 여기부터 이어가면 됨)
+- 어제 "콘솔 미노출"은 **선행 신청 미완료** 때문일 가능성 확인 (문서상 심사 게이트 없음). 순서: NCP 가입→Object Storage→CLOVA Chatbot(AiCall 타입 도메인)→AiCall Contact Center(Outbound)→번호 등록(통신서비스 이용증명원)→캠페인
+- **사용자가 CLOVA Chatbot 도메인 생성 완료** (권장값: 코드 com.seniorscheduler.aicall, 한국어, AiCall 타입)
+- **다음: Chatbot 빌더에 응대 시나리오 입력** — 웰컴(인사+녹음고지+일정확인) / Main 대화 4개(복약-했어요/복약-아직/기분/식사, 컨텍스트 hard로 순서 강제) / Repair(재질문 1회, 억지판정 금지) → 빌드 → **채팅 테스트로 전화 없이 검증** (이번 세션 대화에 상세 표 있음)
+- 유의: 판정·리포트 두뇌는 계속 우리 서버 (Chatbot엔 대화 진행만 — 벤더 종속 방지). Outbound가 캠페인 단위인지 vs 1건 발신 가능인지가 도입 최종 관문
+- 문의처(미노출 시): https://www.ncloud.com/support/question / 제품: https://www.ncloud.com/product/aiService/CCAI
+
+### UI 요청 (사용자 — ui 레인 진행)
+- 대시보드에 피보호자 목록 표시 (요약 정보 포함, 여러 명 시 구분)
+- **피보호자 탭을 AppNav에 추가** (현재 /app/seniors 페이지는 있는데 네비에 없어 대시보드 퀵액션으로만 진입 가능) — 확인·수정 가능하게
+
+### 테스트 데이터 현황 (정리 대상)
+- seniors: 신우진(수신번호=사용자 본인 휴대폰, **번호는 비공개 메모리 clawops-e2e-test-setup.md 참조 — repo 기재 금지**. 대리+본인동의, 본인동의는 REST 직접 기록) / schedules: "저녁 약과 병원 일정" 18:22 매일, active ON / call_sessions COMPLETED 2건(60원×2) / **테스트 종료 시: 일정 토글 OFF 필수(매일 실발신 방지!), TELEPHONY_PROVIDER 제거 여부는 CLOVA 검토 진행에 따라 결정**
+- ⚠️ **디스패처는 수동/루프 방식이라 지금은 크론 미가동 — 단 TELEPHONY_PROVIDER=clawops가 프로덕션에 살아 있으므로 누가 디스패치를 CRON_SECRET으로 호출하면 실발신됨**
+
+---
+
 ## 세션 #8 (2026-07-16) — 전수 스모크 PASS + 파비콘 수정 + 실콜 E2E 준비 완료
 
 ### 완료 (후반 — 음성 응답 전환 + 실발신 모드 전환)
