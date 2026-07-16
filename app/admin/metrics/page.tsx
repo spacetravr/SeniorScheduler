@@ -56,6 +56,14 @@ function PasswordGate() {
   );
 }
 
+/** 이메일 마스킹 — 로컬파트 앞 1~3자만 남기고 ***. 화면 노출 최소화(원본은 DB에만). */
+function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at <= 0) return "***";
+  const keep = at <= 2 ? 1 : Math.min(3, at - 1);
+  return `${email.slice(0, keep)}***${email.slice(at)}`;
+}
+
 // ── 데이터 로드 ───────────────────────────────────────────────────────────────
 async function loadMetrics(): Promise<Metrics> {
   const supabase = getAdminClient();
@@ -200,15 +208,15 @@ export default async function AdminMetricsPage({
           </h1>
           {isDemo && (
             <span className="rounded-base bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
-              샘플 데이터
+              Simulation · 가상 지표
             </span>
           )}
         </div>
         <p className="mt-1 text-sm text-text-muted break-keep">
           {isDemo ? (
             <>
-              설문·링크로 유입된 방문자가 어디까지 반응했는지 보여 드립니다. 아래
-              숫자는 화면 구성 확인용 샘플 데이터입니다.
+              설문·링크로 유입된 방문자가 어디까지 반응했는지 보여 드립니다.
+              Scenario: 런칭 초기 단계 가상 시뮬레이션 지표입니다.
             </>
           ) : (
             <>
@@ -347,7 +355,7 @@ export default async function AdminMetricsPage({
                         {w.source}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-text">
-                        {w.email}
+                        {maskEmail(w.email)}
                       </td>
                     </tr>
                   ))
@@ -356,7 +364,8 @@ export default async function AdminMetricsPage({
             </table>
           </div>
           <p className="mt-2 text-xs text-text-muted break-keep">
-            개인정보 보호를 위해 이메일 일부만 표시합니다. 전체 명단·CSV 내보내기는{" "}
+            개인정보 보호법 준수를 위해 이메일 뒤 영역은 마스킹 처리되어
+            표시됩니다. 전체 명단·CSV 내보내기는{" "}
             <a
               href={SUPABASE_TABLE_EDITOR_URL}
               target="_blank"
@@ -413,7 +422,8 @@ export default async function AdminMetricsPage({
           )}
 
           <p className="mt-2 text-xs text-text-muted break-keep">
-            개인정보 보호를 위해 이메일 일부만 표시합니다. (샘플 데이터)
+            개인정보 보호법 준수를 위해 이메일 뒤 영역은 마스킹 처리되어
+            표시됩니다.
           </p>
         </section>
       )}
@@ -421,7 +431,8 @@ export default async function AdminMetricsPage({
       {/* 데모 각주 */}
       {isDemo && (
         <p className="mt-6 rounded-base border border-accent/20 bg-accent/5 p-3 text-xs text-text-muted break-keep">
-          이 화면은 샘플 데이터입니다. 실데이터는 데모 모드 해제 후 확인하세요.
+          본 화면은 비즈니스 데모 및 UI/UX 검증을 위한 Sandbox Simulation
+          Mode입니다. 표시된 지표는 가상 시나리오 데이터입니다.
         </p>
       )}
     </main>
