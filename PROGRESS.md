@@ -8,6 +8,12 @@
 
 ## 세션 #8 (2026-07-16) — 전수 스모크 PASS + 파비콘 수정 + 실콜 E2E 준비 완료
 
+### 완료 (후반 — 음성 응답 전환 + 실발신 모드 전환)
+- **ARS+ 음성 응답 우선 전환** (사용자 결정: 시니어 DTMF 입력 어려움 — data-api worktree → reviewer PASS → 머지 d42a187 → **프로덕션 배포·스모크 PASS**): 멘트에서 버튼 안내 제거, "네, 했어요"/"아직이요" 음성 유도. Gather `input="speech dtmf"`(ko-KR, DTMF는 silent 수용), SpeechResult→SENIOR/VOICE 턴, 무입력 재질문 1회→기분→종료. CONSENT는 "동의합니다"/"괜찮습니다" 음성 유도 + `classifyConsent` 공유(실시간 멘트 분기·콜백 최종 판정 동일 함수), **"괜찮"·"됐" GRANT→DENY 이동**(거부 유도 멘트와 정합 — SCHEDULE 마커와 분리돼 교차 오염 없음, reviewer 확인). speech 미지원 시 통화 완주→통화 후 전사 분류 폴백. 테스트 **283/283**
+- **프로덕션 = 실발신 모드** (사용자 승인 2건): `TELEPHONY_PROVIDER=clawops` Vercel 설정+재배포. 크론은 여전히 disabled — 발신은 오케스트레이터의 CRON_SECRET 수동/루프 디스패치로만
+- **테스트 방식 확정 (사용자)**: 동의 콜 생략(피보호자 등록 시 오케스트레이터가 CONSENT 세션 삭제 + self_consent_at 직접 기록), 일정 콜만 테스트. 예약 시각 자동 발신은 1분 주기 디스패처 루프로 재현
+- 로컬 dev 3000 깨짐 수습: TaskStop이 자식 node를 못 죽여 좀비가 포트 점유 + build가 .next를 덮어씀 → 프로세스 kill + .next 삭제 재기동. **교훈: dev 서버 살아있을 때 npm run build 금지, 재기동 전 포트 점유 확인**
+
 ### 완료
 - **전수 스모크 PASS** (로컬 dev + Playwright 실조작): 공개 플로우(랜딩·preregister·CTA 204·waitlist 201·테스트행 삭제·admin 200) + 인증 플로우 5단계(로그인→피보호자 등록(동의 방어 확인)→일정 등록→토글 ON 유지→대시보드 오늘 인스턴스 표시) + 통화/리포트/설정 화면 렌더. **CONSENT 자동 트리거 실동작 확인**(피보호자 등록 → 동의 콜 세션 자동 생성 → 통화 기록 표시). 테스트 데이터(피보호자·일정·동의콜 세션) 전부 삭제·REST 잔여 0 확인
 - **파비콘 404 수정** (패스트트랙 ac78b33): `app/icon.svg`(브랜드 네이비 전화 아이콘) → 빌드 통과 → 머지 → 프로덕션 배포·스모크 PASS
