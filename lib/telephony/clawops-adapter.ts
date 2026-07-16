@@ -226,7 +226,9 @@ export class ClawOpsAdapter implements TelephonyAdapter {
   async triggerCall(params: TriggerCallParams): Promise<TriggerCallResult> {
     const body = {
       To: toE164Kr(params.to),
-      From: toE164Kr(this.config.fromNumber),
+      // From 은 계정에 등록된 형식 그대로 보내야 한다 — E.164 변환 시 "From 번호가 계정에
+      // 등록되지 않았습니다"(HTTP 400)로 거절됨 (2026-07-16 실콜 확인).
+      From: this.config.fromNumber,
       Url: this.voicemlUrl(params.sessionId),
       StatusCallback: this.statusCallbackUrl(params.sessionId),
       StatusCallbackEvent: "initiated ringing answered completed",
@@ -249,8 +251,13 @@ export class ClawOpsAdapter implements TelephonyAdapter {
       throw new TelephonyNotConfiguredError(`ClawOps 발신 실패: HTTP ${res.status}`);
     }
 
-    const json = (await res.json().catch(() => null)) as { CallId?: string } | null;
-    const providerCallId = typeof json?.CallId === "string" ? json.CallId : null;
+    // 실응답은 camelCase `callId` (2026-07-16 실콜 확인 — 문서의 `CallId`와 다름). 둘 다 수용.
+    const json = (await res.json().catch(() => null)) as {
+      CallId?: string;
+      callId?: string;
+    } | null;
+    const rawId = json?.callId ?? json?.CallId;
+    const providerCallId = typeof rawId === "string" ? rawId : null;
     return { providerCallId };
   }
 

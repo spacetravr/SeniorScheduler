@@ -151,7 +151,7 @@ describe("dedupeTranscriptTurns — 실시간 Gather 저장 발화와 전사 중
 });
 
 describe("ClawOpsAdapter.triggerCall", () => {
-  it("POST calls: Bearer 인증 + To/From E.164 + VoiceML/StatusCallback URL(토큰 포함) + MachineDetection Hangup", async () => {
+  it("POST calls: Bearer 인증 + To E.164/From 등록형식 그대로 + VoiceML/StatusCallback URL(토큰 포함) + MachineDetection Hangup", async () => {
     const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => jsonRes({ CallId: "CA_abc" }));
     const adapter = new ClawOpsAdapter(CONFIG, fetchMock as unknown as typeof fetch, noSleep);
 
@@ -169,7 +169,7 @@ describe("ClawOpsAdapter.triggerCall", () => {
     expect(init!.headers).toMatchObject({ Authorization: "Bearer sk_test" });
     const body = JSON.parse(init!.body as string);
     expect(body.To).toBe("+821012345678");
-    expect(body.From).toBe("+827052753827");
+    expect(body.From).toBe("070-5275-3827");
     expect(body.MachineDetection).toBe("Hangup");
     expect(body.Url).toContain("/api/telephony/voiceml?session=sess-1&token=");
     expect(body.Url).toContain("step=intro");
@@ -177,6 +177,18 @@ describe("ClawOpsAdapter.triggerCall", () => {
     // URL 토큰이 세션 토큰과 일치.
     const token = signSessionToken("sess-1", CONFIG.callbackSecret);
     expect(body.Url).toContain(`token=${token}`);
+  });
+
+  it("실응답 camelCase callId 도 providerCallId 로 파싱 (2026-07-16 실콜 확인)", async () => {
+    const fetchMock = vi.fn(async () => jsonRes({ callId: "CA_real", status: "queued" }));
+    const adapter = new ClawOpsAdapter(CONFIG, fetchMock as unknown as typeof fetch, noSleep);
+    const res = await adapter.triggerCall({
+      sessionId: "sess-1",
+      seniorId: "senior-1",
+      to: "010-1234-5678",
+      purpose: "SCHEDULE",
+    });
+    expect(res.providerCallId).toBe("CA_real");
   });
 
   it("HTTP 실패 시 throw(가짜 성공 기록 방지)", async () => {
