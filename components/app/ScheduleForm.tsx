@@ -49,8 +49,16 @@ export function ScheduleForm(props: Props) {
   const initial = parseRrule(props.schedule?.rrule);
   const [repeat, setRepeat] = useState<Repeat>(initial.repeat);
   const [days, setDays] = useState<string[]>(initial.days);
+  // 신규 등록은 유형 복수 선택(1개 이상). 수정은 단일 유형이라 이 상태를 쓰지 않는다.
+  const [types, setTypes] = useState<string[]>([props.schedule?.type ?? "MEDICATION"]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  function toggleType(code: string) {
+    setTypes((prev) =>
+      prev.includes(code) ? prev.filter((t) => t !== code) : [...prev, code],
+    );
+  }
 
   const rrule = useMemo(() => {
     if (repeat === "DAILY") return "FREQ=DAILY";
@@ -76,32 +84,68 @@ export function ScheduleForm(props: Props) {
       return;
     }
 
+    if (!isEdit && types.length === 0) {
+      setError("일정 유형을 하나 이상 선택해 주세요.");
+      return;
+    }
+
     const base = {
       senior_id: String(fd.get("senior_id") ?? ""),
-      type: String(fd.get("type") ?? "MEDICATION"),
       title: String(fd.get("title") ?? "").trim(),
       script_template: String(fd.get("script_template") ?? "").trim(),
       call_time: String(fd.get("call_time") ?? ""),
       rrule,
     };
 
+    // ── 수정: 기존대로 단일 유형 1건 ──
+    if (isEdit) {
+      startTransition(async () => {
+        const result = await updateSchedule({
+          id: props.schedule.id,
+          ...base,
+          type: String(fd.get("type") ?? "MEDICATION"),
+          active: props.schedule.active,
+        });
+        if (result.ok) props.onDone?.();
+        else setError(result.error);
+      });
+      return;
+    }
+
+    // ── 신규: 선택한 유형마다 createSchedule 를 1회씩 반복 호출 ──
+    // 2개 이상이면 각 건 제목 뒤에 " — {유형 라벨}" 접미를 붙여 구분한다.
+    const multi = types.length > 1;
     startTransition(async () => {
-      const result = isEdit
-        ? await updateSchedule({
-            id: props.schedule.id,
-            ...base,
-            active: props.schedule.active,
-          })
-        : await createSchedule({ ...base, active: false });
-      if (result.ok) {
-        if (!isEdit) {
-          form.reset();
-          setRepeat("DAILY");
-          setDays(["MO"]);
-        }
+      const results = await Promise.all(
+        types.map(async (type) => {
+          const label = scheduleTypeLabel[type as keyof typeof scheduleTypeLabel];
+          const title = multi ? `${base.title} — ${label}` : base.title;
+          const r = await createSchedule({ ...base, type, title, active: false });
+          return { label, ok: r.ok, error: r.ok ? null : r.error };
+        }),
+      );
+
+      const failed = results.filter((r) => !r.ok);
+      if (failed.length === 0) {
+        form.reset();
+        setRepeat("DAILY");
+        setDays(["MO"]);
+        setTypes(["MEDICATION"]);
         props.onDone?.();
+        return;
+      }
+
+      const firstErr = failed[0].error ?? "알 수 없는 오류가 발생했어요.";
+      if (failed.length === results.length) {
+        // 전부 실패
+        setError(`일정 등록에 실패했어요: ${firstErr}`);
       } else {
-        setError(result.error);
+        // 일부만 실패
+        const okLabels = results.filter((r) => r.ok).map((r) => r.label).join("·");
+        const failLabels = failed.map((r) => r.label).join("·");
+        setError(
+          `${okLabels} 일정은 등록됐지만 ${failLabels} 일정 등록에 실패했어요: ${firstErr}`,
+        );
       }
     });
   }
@@ -113,9 +157,9 @@ export function ScheduleForm(props: Props) {
       onSubmit={handleSubmit}
       className="flex flex-col gap-4 rounded-base border border-border bg-bg p-5 shadow-card"
     >
-      <h2 className="text-base font-semibold">
-        {isEdit ? "일정 수정" : "새 일정 등록"}
-      </h2>
+      {isEdit ? (
+        <h2 className="text-base font-semibold">일정 수정</h2>
+      ) : null}
 
       <label className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">피보호자</span>
@@ -133,33 +177,80 @@ export function ScheduleForm(props: Props) {
         </select>
       </label>
 
-      <div className="flex gap-3">
-        <label className="flex flex-1 flex-col gap-1.5 text-sm">
-          <span className="font-medium">유형</span>
-          <select
-            name="type"
-            required
-            defaultValue={s?.type ?? "MEDICATION"}
-            className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
-          >
-            {SCHEDULE_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {scheduleTypeLabel[t]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-1 flex-col gap-1.5 text-sm">
-          <span className="font-medium">발신 시각</span>
-          <input
-            name="call_time"
-            type="time"
-            required
-            defaultValue={s?.call_time ?? "09:00"}
-            className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
-          />
-        </label>
-      </div>
+      {isEdit ? (
+        <div className="flex gap-3">
+          <label className="flex flex-1 flex-col gap-1.5 text-sm">
+            <span className="font-medium">유형</span>
+            <select
+              name="type"
+              required
+              defaultValue={s?.type ?? "MEDICATION"}
+              className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
+            >
+              {SCHEDULE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {scheduleTypeLabel[t]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-1 flex-col gap-1.5 text-sm">
+            <span className="font-medium">발신 시각</span>
+            <input
+              name="call_time"
+              type="time"
+              required
+              defaultValue={s?.call_time ?? "09:00"}
+              className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
+            />
+          </label>
+        </div>
+      ) : (
+        <>
+          {/* 유형 복수 선택 (1개 이상 필수) */}
+          <div className="flex flex-col gap-2 text-sm">
+            <span className="font-medium">
+              유형{" "}
+              <span className="font-normal text-text-muted">(복수 선택 가능)</span>
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {SCHEDULE_TYPES.map((t) => {
+                const on = types.includes(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => toggleType(t)}
+                    className={`rounded-base px-3.5 py-2 font-medium transition-colors ${
+                      on ? "bg-primary text-bg" : "bg-surface text-text-muted"
+                    }`}
+                  >
+                    {scheduleTypeLabel[t]}
+                  </button>
+                );
+              })}
+            </div>
+            {types.length > 1 ? (
+              <p className="break-keep text-xs leading-relaxed text-text-muted">
+                {types.length}개 유형이 각각 별도 일정으로 등록됩니다. 제목 뒤에
+                유형이 붙어 구분돼요.
+              </p>
+            ) : null}
+          </div>
+
+          <label className="flex flex-col gap-1.5 text-sm">
+            <span className="font-medium">발신 시각</span>
+            <input
+              name="call_time"
+              type="time"
+              required
+              defaultValue={s?.call_time ?? "09:00"}
+              className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
+            />
+          </label>
+        </>
+      )}
 
       <label className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">제목</span>

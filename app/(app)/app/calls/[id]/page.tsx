@@ -11,7 +11,11 @@ import {
   AdherenceStatusBadge,
 } from "@/components/app/StatusBadge";
 import { fmtDateTime, fmtTime } from "@/components/app/format";
-import { scheduleTypeLabel, MEDICAL_DISCLAIMER } from "@/lib/contracts/domain";
+import {
+  scheduleTypeLabel,
+  adherenceStatusLabel,
+  MEDICAL_DISCLAIMER,
+} from "@/lib/contracts/domain";
 import {
   getCallSessionDetail,
   getSeniors,
@@ -63,10 +67,80 @@ export default async function CallDetailPage({
         </Link>
         <PageHeader
           title={title}
-          subtitle={`${fmtDateTime(session.scheduled_at)} · ${seniorLabel} · ${meta}`}
-          action={<SessionStatusBadge status={session.status} />}
+          subtitle={`${seniorLabel} · ${meta}`}
         />
       </div>
+
+      {/* 리포트 — 이 통화의 핵심. 최상단으로 승격 */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold">이 통화의 리포트</h2>
+        {report ? (
+          <div className="flex flex-col gap-4 rounded-base border border-border bg-bg p-5 shadow-card">
+            {/* 일정 수행 여부를 크게 */}
+            <div className="flex flex-col gap-2">
+              <span className="break-keep text-sm text-text-muted">일정 수행 여부</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-2xl font-bold text-primary">
+                  {adherenceStatusLabel[report.adherence_status]}
+                </span>
+                <AdherenceStatusBadge status={report.adherence_status} />
+              </div>
+            </div>
+
+            {/* 요약 문단 */}
+            <p className="break-keep text-base leading-relaxed">{report.summary}</p>
+
+            {/* 기분/건강 플래그 */}
+            {report.mood_flag || report.health_flag ? (
+              <div className="flex flex-wrap gap-2 text-xs">
+                {report.mood_flag ? (
+                  <span className="inline-flex items-center gap-1 rounded-base bg-surface px-2.5 py-1.5 font-medium text-accent">
+                    <Frown className="h-3.5 w-3.5" aria-hidden strokeWidth={2} />
+                    기분 살핌
+                  </span>
+                ) : null}
+                {report.health_flag ? (
+                  <span className="inline-flex items-center gap-1 rounded-base bg-surface px-2.5 py-1.5 font-medium text-accent">
+                    <Stethoscope className="h-3.5 w-3.5" aria-hidden strokeWidth={2} />
+                    건강 신호
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+
+            <p className="break-keep border-t border-border pt-3 text-xs leading-relaxed text-text-muted">
+              {MEDICAL_DISCLAIMER}
+            </p>
+          </div>
+        ) : (
+          <p className="break-keep rounded-base bg-surface p-5 text-sm text-text-muted">
+            아직 생성된 리포트가 없습니다.
+          </p>
+        )}
+      </section>
+
+      {/* 통화 메타 — 예정 시각·상태·시도 */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold">통화 정보</h2>
+        <dl className="flex flex-col gap-2 rounded-base border border-border bg-bg p-5 shadow-card text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-text-muted">예정 시각</dt>
+            <dd className="break-keep font-medium tabular-nums">
+              {fmtDateTime(session.scheduled_at)}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-text-muted">통화 상태</dt>
+            <dd>
+              <SessionStatusBadge status={session.status} />
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-text-muted">시도 횟수</dt>
+            <dd className="font-medium tabular-nums">{session.attempt}회</dd>
+          </div>
+        </dl>
+      </section>
 
       {/* 전사 타임라인 */}
       <section className="flex flex-col gap-3">
@@ -104,40 +178,6 @@ export default async function CallDetailPage({
               );
             })}
           </div>
-        )}
-      </section>
-
-      {/* 연결된 리포트 */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-semibold">통화 리포트</h2>
-        {report ? (
-          <div className="flex flex-col gap-3 rounded-base border border-border bg-bg p-5 shadow-card">
-            <div className="flex items-center justify-between gap-3">
-              <AdherenceStatusBadge status={report.adherence_status} />
-              <div className="flex gap-2 text-xs">
-                {report.mood_flag ? (
-                  <span className="inline-flex items-center gap-1 rounded-base bg-surface px-2 py-1 font-medium text-accent">
-                    <Frown className="h-3.5 w-3.5" aria-hidden strokeWidth={2} />
-                    기분 살핌
-                  </span>
-                ) : null}
-                {report.health_flag ? (
-                  <span className="inline-flex items-center gap-1 rounded-base bg-surface px-2 py-1 font-medium text-accent">
-                    <Stethoscope className="h-3.5 w-3.5" aria-hidden strokeWidth={2} />
-                    건강 신호
-                  </span>
-                ) : null}
-              </div>
-            </div>
-            <p className="break-keep text-sm leading-relaxed">{report.summary}</p>
-            <p className="break-keep border-t border-border pt-3 text-xs leading-relaxed text-text-muted">
-              {MEDICAL_DISCLAIMER}
-            </p>
-          </div>
-        ) : (
-          <p className="break-keep rounded-base bg-surface p-5 text-sm text-text-muted">
-            아직 생성된 리포트가 없습니다.
-          </p>
         )}
       </section>
     </div>
