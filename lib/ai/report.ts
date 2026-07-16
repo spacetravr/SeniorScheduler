@@ -21,9 +21,14 @@ export type ReportInput = {
   scheduleTitle: string;
   /** 기분 질문 응답 텍스트(있으면). 판정엔 쓰지 않고 flag/요약에만 사용. */
   moodText: string | null;
+  /**
+   * 일상 대화(식사·하루 일과 등) 자유 발화 텍스트. 판정엔 쓰지 않고 요약에만 반영한다
+   * (의료 조언 금지 불변). 없으면 빈 배열.
+   */
+  dailyChatTexts?: string[];
   /** 성사 시 총 시도 횟수(재시도 포함). MISSED 요약에 표기. */
   attempts: number;
-  /** 전체 SENIOR 응답 텍스트(flag 감지 대상). */
+  /** 전체 SENIOR 응답 텍스트(flag 감지 대상 — 기분·일상 자유 발화 포함). */
   seniorTexts: string[];
 };
 
@@ -66,11 +71,16 @@ function templateSummary(input: ReportInput, status: AdherenceStatus): string {
   if (input.moodText && input.moodText.trim() !== "") {
     lines.push(`기분 질문에 "${input.moodText.trim()}"라고 답하셨습니다.`);
   }
+  const daily = (input.dailyChatTexts ?? []).map((t) => t.trim()).filter((t) => t !== "");
+  if (daily.length > 0) {
+    lines.push(`일상 대화에서 "${daily.join(" ")}"라고 말씀하셨습니다.`);
+  }
   return lines.slice(0, 3).join("\n");
 }
 
 const LLM_SUMMARY_SYSTEM =
   "다음 통화 요약 정보를 보호자에게 전달할 3줄 이내 한국어 요약으로 만드세요. " +
+  "이행 여부와 함께, 기분·일상 대화 내용이 있으면 한 줄로 따뜻하게 반영하세요. " +
   "의료적 판단·조언은 절대 넣지 마세요. 관찰된 사실만, 따뜻하고 담백하게.";
 
 /**
@@ -89,10 +99,12 @@ export async function generateReport(
   let summary = templateSummary(input, status);
 
   if (llm && input.answered) {
+    const daily = (input.dailyChatTexts ?? []).map((t) => t.trim()).filter((t) => t !== "");
     const user = [
       `일정: ${input.scheduleTitle}`,
       `이행 판정: ${status}`,
       input.moodText ? `기분 응답: ${input.moodText}` : "기분 응답: (없음)",
+      daily.length > 0 ? `일상 대화: ${daily.join(" / ")}` : "",
       health_flag ? "건강 관련 언급 감지됨" : "",
     ]
       .filter(Boolean)

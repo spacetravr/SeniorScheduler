@@ -122,21 +122,61 @@ export function computeCallCostKrw(
  * VoiceML 이 이미 SYSTEM 멘트·SENIOR DTMF 턴을 저장하므로, 전사에서는 **피보호자 자유 발화**
  * (SENIOR VOICE)만 뽑아 보강한다(SYSTEM 멘트 중복 저장 방지). speaker 라벨 규약은 미확정 —
  * agent/system/bot 계열이 아니면 SENIOR 로 간주한다(TODO: E2E 에서 speaker 라벨 확정).
+ *
+ * ── 세그먼트 순서 보존(2026-07-16) ──
+ * 전사 세그먼트는 발화 순서(일정 확인 답 → 기분 → 일상…)를 담지만, 콜백 시점 단일 atIso 를
+ * 모든 턴에 그대로 부여하면 created_at 이 동률이 되어 splitAtFreeForm 의 시간순 경계 분리가
+ * 흔들릴 수 있다. 따라서 세그먼트 순서대로 밀리초를 미세 증가시켜 순서를 안정적으로 보존한다
+ * (동률 제거 → 자유-발화 경계가 결정적). atIso 파싱 불가 시엔 그대로 atIso 사용(방어적).
  */
 export function transcriptSegmentsToTurns(
   segments: Array<{ speaker?: string; text?: string }>,
   atIso: string,
 ): CallbackTurn[] {
+  const baseMs = Date.parse(atIso);
   const turns: CallbackTurn[] = [];
+  let seq = 0;
   for (const seg of segments ?? []) {
     const text = (seg.text ?? "").trim();
     if (text === "") continue;
     const speaker = (seg.speaker ?? "").toLowerCase();
     const isAgent = /agent|system|bot|ivr|caller|outbound/.test(speaker);
     if (isAgent) continue; // 우리 멘트는 VoiceML 에서 이미 기록됨.
-    turns.push({ role: "SENIOR", input_kind: "VOICE", text, at: atIso });
+    const at = Number.isFinite(baseMs) ? new Date(baseMs + seq).toISOString() : atIso;
+    turns.push({ role: "SENIOR", input_kind: "VOICE", text, at });
+    seq++;
   }
   return turns;
+}
+
+/** dedup 비교용 정규화 — 공백 접기 + 트림 + 소문자(전사·인식 표기 흔들림 흡수). */
+function normalizeTurnText(s: string): string {
+  return s.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * 콜백 전사 턴을 이미 저장된(실시간 Gather) 턴과 대조해 중복을 제거한다.
+ *
+ * 적응형 Gather(2026-07-16) 도입으로 기분·일상 발화가 실시간 SpeechResult 로 SENIOR/VOICE 턴에
+ * 이미 저장될 수 있다. 통화 후 ClawOps 전사가 같은 발화를 다시 실어오면 중복 삽입되므로, 기존
+ * SENIOR 턴 텍스트(정규화)와 일치하는 전사 턴은 버린다. 전사 내부 중복도 1회로 접는다.
+ * (벤더가 speech 미지원이면 실시간 SENIOR/VOICE 턴이 없으므로 전사가 그대로 보강된다.)
+ */
+export function dedupeTranscriptTurns(
+  transcript: readonly CallbackTurn[],
+  existing: readonly CallbackTurn[],
+): CallbackTurn[] {
+  const seen = new Set(
+    existing.filter((t) => t.role === "SENIOR").map((t) => normalizeTurnText(t.text)),
+  );
+  const out: CallbackTurn[] = [];
+  for (const t of transcript) {
+    const key = normalizeTurnText(t.text);
+    if (key === "" || seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+  }
+  return out;
 }
 
 type FetchImpl = typeof fetch;

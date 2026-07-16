@@ -13,7 +13,11 @@ import {
   type CallbackTurn,
   type TelephonyCallbackPayload,
 } from "@/lib/telephony/callback";
-import { ClawOpsAdapter, verifySessionToken } from "@/lib/telephony/clawops-adapter";
+import {
+  ClawOpsAdapter,
+  verifySessionToken,
+  dedupeTranscriptTurns,
+} from "@/lib/telephony/clawops-adapter";
 import {
   processCallback,
   type CallbackStore,
@@ -284,9 +288,13 @@ async function handleClawops(req: Request, secret: string): Promise<NextResponse
           console.error("[callback] transcript:", e instanceof Error ? e.name : "error");
         }
         if (transcriptTurns.length > 0) {
-          await store.insertTurns(sessionId, transcriptTurns);
+          // 적응형 Gather 로 이미 실시간 저장된 SENIOR 발화와 중복되지 않게 dedup 후 삽입.
+          const existing = store.getExistingTurns ? await store.getExistingTurns(sessionId) : [];
+          const fresh = dedupeTranscriptTurns(transcriptTurns, existing);
+          if (fresh.length > 0) await store.insertTurns(sessionId, fresh);
         }
         payload = {
+          // 전사 확보 시도 자체가 원가 발생 지점 → includeTranscript 는 fetch 결과 기준(dedup 무관).
           ...payload,
           cost_krw: adapter.costKrw(durationSec, transcriptTurns.length > 0),
         };

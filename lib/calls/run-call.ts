@@ -5,6 +5,7 @@ import { classify, classifyByRules, classifyConsent, type SeniorResponse } from 
 import { generateReport, type GeneratedReport } from "@/lib/ai/report";
 import type { LlmClient } from "@/lib/ai/llm";
 import { scheduleScript, CONSENT_SCRIPT } from "./scripts";
+import { FREE_FORM_PROMPTS } from "./warm-talk";
 import {
   transition,
   retryDelayMs,
@@ -33,6 +34,35 @@ export function toResponses(turns: CollectedTurn[]): SeniorResponse[] {
 }
 
 /**
+ * 수집된 턴을 "이행 판정 대상(adherence)"과 "자유 발화(free-form: 기분·일상)"로 분리.
+ *
+ * 경계: 자유 발화 유도 프롬프트(FREE_FORM_PROMPTS — 기분/일상 질문)를 포함하는 첫 SYSTEM 턴.
+ * 그 이전의 SENIOR 발화 = 일정 확인 응답(판정 대상), 그 이후 = 자유 발화(판정 제외, 저장만).
+ * 콜백 전사로 뒤늦게 붙는 자유 발화 SENIOR 턴은 종결부 SYSTEM 턴들보다 뒤에 오므로 free-form
+ * 으로 정확히 분리된다. 이렇게 "식사 하셨어요?"→"네 먹었어요" 자유 발화가 복약 이행을 DONE
+ * 으로 오염시키는 억지 판정을 원천 차단한다.
+ *
+ * 경계 마커가 없으면(구형 스크립트/테스트 턴) null → 호출자가 기존 휴리스틱(마지막=기분)으로
+ * 폴백한다(하위 호환).
+ */
+export function splitAtFreeForm(
+  turns: CollectedTurn[],
+): { adherence: SeniorResponse[]; freeForm: SeniorResponse[] } | null {
+  const boundary = turns.findIndex(
+    (t) => t.role === "SYSTEM" && FREE_FORM_PROMPTS.some((p) => t.text.includes(p)),
+  );
+  if (boundary < 0) return null;
+
+  const adherence: SeniorResponse[] = [];
+  const freeForm: SeniorResponse[] = [];
+  turns.forEach((t, i) => {
+    if (t.role !== "SENIOR" || t.text.trim() === "") return;
+    (i < boundary ? adherence : freeForm).push({ text: t.text, input_kind: t.input_kind });
+  });
+  return { adherence, freeForm };
+}
+
+/**
  * 수집된 턴 → 분류·리포트 생성 (SCHEDULE 콜의 "두뇌" 재사용 단일 지점).
  *
  * mock 동기 경로(runScheduleCall)와 실벤더 비동기 콜백 경로(telephony/callback)가 모두
@@ -54,16 +84,36 @@ export async function classifyAndReportSchedule(args: {
   const { turns, scheduleTitle, answered, attempts, llm } = args;
   const responses = toResponses(turns);
 
-  // 마지막 SENIOR 응답 = 기분 답(있으면). 판정 입력에서 분리.
-  const moodText = answered && responses.length > 0 ? responses[responses.length - 1].text : null;
-  const classifyInput = answered && responses.length > 0 ? responses.slice(0, -1) : [];
+  // 이행 판정 대상(일정 확인 응답)과 자유 발화(기분·일상)를 분리.
+  //   - 경계 마커(warm-talk SYSTEM 턴) 있으면 그 기준으로 정확히 분리 → 자유 발화 오염 차단.
+  //   - 마커 없으면(구형/테스트 턴) 기존 휴리스틱: 마지막 SENIOR = 기분, 나머지 = 판정 입력.
+  const split = splitAtFreeForm(turns);
+  let classifyInput: SeniorResponse[];
+  let freeForm: SeniorResponse[];
+  if (split) {
+    classifyInput = split.adherence;
+    freeForm = split.freeForm;
+  } else if (answered && responses.length > 0) {
+    classifyInput = responses.slice(0, -1);
+    freeForm = [responses[responses.length - 1]];
+  } else {
+    classifyInput = [];
+    freeForm = [];
+  }
 
+  // 판정 소스: 마커가 있으면 adherence 만(비면 UNCERTAIN — 억지 판정 금지). 마커가 없으면
+  // 기존 동작대로 판정 입력이 비면 전체 응답으로 폴백.
+  const classifySource = classifyInput.length > 0 ? classifyInput : split ? [] : responses;
   const classification = answered
-    ? await classify(classifyInput.length > 0 ? classifyInput : responses, llm)
+    ? await classify(classifySource, llm)
     : { status: "UNCERTAIN" as const, method: "NONE" as const };
 
   // LLM 사용분 원가(가드레일 3 상한 내) — classify 직후 관측(기존 순서 보존).
   const llmCostKrw = llm.callsUsed() * MOCK_COST.LLM_PER_CALL;
+
+  // 첫 자유 발화 = 기분 답. 나머지(일상 대화) = 리포트 요약 반영용.
+  const moodText = answered && freeForm.length > 0 ? freeForm[0].text : null;
+  const dailyChatTexts = freeForm.slice(1).map((r) => r.text);
 
   const report = await generateReport(
     {
@@ -71,6 +121,7 @@ export async function classifyAndReportSchedule(args: {
       adherenceStatus: classification.status,
       scheduleTitle,
       moodText,
+      dailyChatTexts,
       attempts,
       seniorTexts: responses.map((r) => r.text),
     },

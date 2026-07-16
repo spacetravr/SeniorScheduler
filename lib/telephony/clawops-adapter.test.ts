@@ -6,8 +6,10 @@ import {
   toE164Kr,
   computeCallCostKrw,
   transcriptSegmentsToTurns,
+  dedupeTranscriptTurns,
   type ClawOpsConfig,
 } from "./clawops-adapter";
+import type { CallbackTurn } from "./callback";
 
 const CONFIG: ClawOpsConfig = {
   apiKey: "sk_test",
@@ -74,6 +76,77 @@ describe("transcriptSegmentsToTurns", () => {
     expect(turns.map((t) => t.text)).toEqual(["약 먹었어요", "기분 좋아요"]);
     expect(turns.every((t) => t.role === "SENIOR" && t.input_kind === "VOICE")).toBe(true);
     expect(turns[0].at).toBe("2026-07-16T09:00:00.000Z");
+  });
+
+  it("세그먼트 순서대로 타임스탬프 미세 증가(동률 제거 → splitAtFreeForm 경계 안정)", () => {
+    const turns = transcriptSegmentsToTurns(
+      [
+        { speaker: "callee", text: "약 먹었어요" }, // 일정 확인 응답
+        { speaker: "callee", text: "기분은 좋아요" }, // 기분(자유 발화)
+        { speaker: "callee", text: "오늘 산책했어요" }, // 일상(자유 발화)
+      ],
+      "2026-07-16T09:00:00.000Z",
+    );
+    const times = turns.map((t) => t.at);
+    // 발화 순서 보존 — 엄격히 증가(동률 없음).
+    expect(times).toEqual([
+      "2026-07-16T09:00:00.000Z",
+      "2026-07-16T09:00:00.001Z",
+      "2026-07-16T09:00:00.002Z",
+    ]);
+    for (let i = 1; i < times.length; i++) {
+      expect(Date.parse(times[i])).toBeGreaterThan(Date.parse(times[i - 1]));
+    }
+  });
+
+  it("atIso 파싱 불가 시 방어적으로 원본 atIso 사용", () => {
+    const turns = transcriptSegmentsToTurns([{ speaker: "callee", text: "네" }], "not-a-date");
+    expect(turns[0].at).toBe("not-a-date");
+  });
+});
+
+describe("dedupeTranscriptTurns — 실시간 Gather 저장 발화와 전사 중복 제거", () => {
+  const s = (text: string, at = "2026-07-16T09:00:00.000Z"): CallbackTurn => ({
+    role: "SENIOR",
+    input_kind: "VOICE",
+    text,
+    at,
+  });
+
+  it("이미 저장된 SENIOR 발화와 텍스트가 같은 전사 턴은 버린다(공백·대소문자 무시)", () => {
+    const existing: CallbackTurn[] = [
+      { role: "SYSTEM", input_kind: "VOICE", text: "오늘 기분은 좀 어떠세요?", at: "2026-07-16T09:00:00.000Z" },
+      s("기분은 좋아요"), // 실시간 Gather 로 저장됨
+    ];
+    const transcript: CallbackTurn[] = [
+      s("  기분은   좋아요  "), // 같은 발화(공백만 다름) → 중복
+      s("오늘 산책했어요"), // 새 발화 → 유지
+    ];
+    const out = dedupeTranscriptTurns(transcript, existing);
+    expect(out.map((t) => t.text)).toEqual(["오늘 산책했어요"]);
+  });
+
+  it("SYSTEM 턴 텍스트와 겹쳐도 SENIOR 만 dedup 기준(전사 SENIOR 발화 보존)", () => {
+    const existing: CallbackTurn[] = [
+      { role: "SYSTEM", input_kind: "VOICE", text: "오늘 산책했어요", at: "2026-07-16T09:00:00.000Z" },
+    ];
+    const out = dedupeTranscriptTurns([s("오늘 산책했어요")], existing);
+    // SYSTEM 멘트와 우연히 같아도 SENIOR 발화는 유지(SENIOR 기준으로만 중복 판단).
+    expect(out.map((t) => t.text)).toEqual(["오늘 산책했어요"]);
+  });
+
+  it("전사 내부 중복도 1회로 접는다", () => {
+    const out = dedupeTranscriptTurns([s("네 먹었어요"), s("네 먹었어요")], []);
+    expect(out.map((t) => t.text)).toEqual(["네 먹었어요"]);
+  });
+
+  it("speech 미지원(실시간 SENIOR 턴 없음)이면 전사가 그대로 보강된다", () => {
+    const existing: CallbackTurn[] = [
+      { role: "SYSTEM", input_kind: "VOICE", text: "오늘 기분은 좀 어떠세요?", at: "2026-07-16T09:00:00.000Z" },
+    ];
+    const transcript = [s("기분 좋아요"), s("산책했어요")];
+    const out = dedupeTranscriptTurns(transcript, existing);
+    expect(out.map((t) => t.text)).toEqual(["기분 좋아요", "산책했어요"]);
   });
 });
 
