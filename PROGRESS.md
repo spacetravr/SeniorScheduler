@@ -6,6 +6,36 @@
 
 ---
 
+## 세션 #7 종료 스냅샷 (2026-07-16 — 다음 세션은 여기부터)
+
+### 현재 상태 한 줄
+**main(0211134) = 프로덕션 완전 동기화. 테스트 272/272. ClawOps 실콜 어댑터까지 전부 배포됐고, 실발신만 3중 잠금(스위치 mock·크론 disabled·라우트 401) 상태로 사용자의 "테스트 해" 승인 대기.**
+
+### 전체 점검 결과 (세션 종료 직전 수행 — 전 항목 정상)
+DB 0001~0006 전부 적용(REST 검증) / 프로덕션 전 라우트 정상(랜딩 0.13s) / 발신 안전장치 3중 잠김 / daily-report·uptime 가동 / env 로컬·Vercel 정합 / 저장소 클린·동기화. **실유입 시작: cta_events 20건, waitlist 2명** (admin/metrics에서 채널 확인 가능)
+
+### 다음 세션 최우선 (사용자 "테스트 해" 시 실콜 E2E)
+1. Vercel `TELEPHONY_PROVIDER=clawops` 설정 → 재배포
+2. 테스트 피보호자(수신 번호는 **비공개 메모리 clawops-e2e-test-setup.md** — repo 커밋 금지)·동의 플로우 → CONSENT 콜 실발신 → 일정 등록 → SCHEDULE 콜 실발신
+3. 테스트에서 검증할 5가지: VoiceML 태그 호환(다르면 voiceml.ts만 수정) / CallStatus·AnsweredBy 실값→매핑 보정 / transcript speaker 라벨 / X-Signature 스킴 / cost_krw 실측 대조. 상세: docs/telephony.md 하단 체크리스트
+4. 종료 후: PROVIDER 제거(mock 복귀)→재배포, 테스트 데이터 정리
+
+### 다음 할 일 (E2E 외)
+- Mock 시연(원하면): 신우진 동의 토글 off→on → 디스패치 수동 1회 — 실발신 없이 전체 파이프라인 확인 가능
+- 후속 코드 2건: lib/contracts에 provider_call_id·next_attempt_at 추가(reviewer 메모) / X-Signature 벤더 서명 검증(스킴 확인 후)
+- 속도 개선 잔여(사용자 미선택): loading.tsx 스켈레톤 / Supabase 서울 이전 재검토
+- [사용자] 계정 비밀번호 변경(공개 repo 평문 — 계속 미조치) / CLOVA 도입 문의 답변 대기(병행 트랙) / Analytics Enable 확인 / 법률 자문(보류 결정, 실발신 전 권장 고지됨)
+
+### 세션 #7 결정사항 요약
+- **LLM = Gemini 우선**(사용자 키, ANTHROPIC 키 오면 자동 전환) / **벤더 = ClawOps 확정 진행**(CLOVA는 콘솔 미노출→문의 병행) / **음성클립 = 전사만**(오케스트레이터 결정) / 법률 자문 보류(사용자) / 실발신은 사용자 명시 승인 시만
+- ClawOps: 팀러너스(주), Twilio 호환, 발신 60원/분+전사 10원/분, Trial 무료 10분/월. 계정·키·070-5275-3827은 .env.local+Vercel(비커밋)
+- 랜딩에 로그인 링크 추가 + 회원가입 개방 유지 + 앱 내 "베타 준비 중" 배너로 기대치 관리
+
+### 블로커
+- 없음 (실콜 E2E만 사용자 승인 대기)
+
+---
+
 ## 2026-07-15 — 세션 #7: 배포 + CONSENT 트리거 + 앱 디자인 폴리시 2차 + 첫 화면 UX 피드백
 
 ### 완료
