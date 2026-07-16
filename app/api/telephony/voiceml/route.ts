@@ -103,7 +103,10 @@ async function handle(req: Request): Promise<NextResponse> {
   }
 
   // Gather 응답(Digits/SpeechResult)은 인증 후에만 파싱(무인증 바디 처리 방지).
-  const { digits, speech } = step === "answer" ? await readGatherInput(req, url) : { digits: "", speech: "" };
+  //   - answer: 일정 확인 응답(DTMF/음성).
+  //   - mood/chat1/chat2: 직전 자유 발화 질문의 음성 답(SpeechResult). intro 는 입력 없음.
+  const { digits, speech } =
+    step === "intro" ? { digits: "", speech: "" } : await readGatherInput(req, url);
 
   const supabase = getAdminClient();
   const { data: sessionData, error: sErr } = await supabase
