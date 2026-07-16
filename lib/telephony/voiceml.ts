@@ -34,6 +34,14 @@
  */
 
 import { classifyConsent } from "@/lib/ai/classifier";
+import {
+  MOOD_LEAD,
+  MOOD_QUESTION,
+  CHAT_TURNS,
+  WARM_CLOSING,
+  MOOD_PAUSE_SEC,
+  CHAT_PAUSE_SEC,
+} from "@/lib/calls/warm-talk";
 
 /** XML 특수문자 이스케이프(멘트·PII 삽입 대비 — script_template/이름 등). */
 export function escapeXml(input: string): string {
@@ -109,8 +117,8 @@ function scheduleIntro(scriptTemplate: string): string {
   );
 }
 const SCHEDULE_REASK = "죄송해요, 잘 못 들었어요. 하셨으면 '네', 아직이면 '아직이요'라고 말씀해 주세요.";
-const SCHEDULE_MOOD = "네, 알겠습니다. 오늘 기분은 좀 어떠세요? 편하게 말씀해 주세요.";
-const SCHEDULE_CLOSING = "말씀 감사해요. 오늘도 건강하세요.";
+// 일정 확인 이후 재생하는 기분/일상 대화 멘트는 lib/calls/warm-talk 에서 단일 소스로 관리한다
+// (MOOD_LEAD/MOOD_QUESTION/CHAT_TURNS/WARM_CLOSING). 여기서는 재생 XML·기록 턴만 구성한다.
 
 const CONSENT_INTRO =
   "안녕하세요. 자녀분이 신청하신 안부 확인 서비스예요. " +
@@ -162,12 +170,17 @@ function hasSpeech(speech: string | undefined): boolean {
 /**
  * VoiceML 생성 — step/purpose 에 따라 XML + 기록 턴 반환.
  *
- * 흐름(SCHEDULE — 음성 우선):
+ * 흐름(SCHEDULE — 음성 우선 + 따뜻한 대화 확장):
  *   intro  → Say(인사+고지+음성 유도) + Gather(speech dtmf →answer)
- *   answer → [유효 DTMF] SENIOR/DTMF 턴 + 기분질문(Say+Pause) + 종료(Hangup)
- *          → [음성 발화] SENIOR/VOICE 턴 + 기분질문 + 종료 (이행 판정은 콜백 분류가)
+ *   answer → [유효 DTMF] SENIOR/DTMF 턴 + 따뜻한 종결부(기분+일상 2턴+마무리)
+ *          → [음성 발화] SENIOR/VOICE 턴 + 따뜻한 종결부 (이행 판정은 콜백 분류가)
  *          → [무입력 & 첫 응답] 재질문 Gather(→answer&reask=1)
- *          → [무입력 & 재질문 후] 기분질문 + 종료(UNCERTAIN — 판정은 콜백이)
+ *          → [무입력 & 재질문 후] 따뜻한 종결부(UNCERTAIN — 판정은 콜백이)
+ *
+ * 따뜻한 종결부(scheduleWarmClose): 응답 인지(MOOD_LEAD)+기분 질문 → 긴 Pause → 일상 질문
+ * 2턴(각 맞장구+질문+Pause) → 따뜻한 마무리 → Hangup. 자유 발화는 Pause 동안 이어지며 판정
+ * 대상이 아니다(콜백 전사로 저장만). 재생 멘트는 SYSTEM 턴으로 기록 — 첫 SYSTEM(기분) 턴이
+ * 콜백 분류의 자유-발화 경계 마커가 된다(run-call.ts splitAtFreeForm 참조).
  *
  * 흐름(CONSENT — 음성 우선):
  *   intro  → Say(안내+고지+음성 유도) + Gather(speech dtmf →answer)
@@ -184,9 +197,28 @@ export function buildVoiceML(params: VoiceMLParams): VoiceMLResult {
   return params.purpose === "CONSENT" ? buildConsent(params) : buildSchedule(params);
 }
 
-/** 기분 질문 후 종료(SCHEDULE 공통 종결부). */
-function scheduleMoodClose(): string {
-  return wrap(say(SCHEDULE_MOOD) + pause(5) + say(SCHEDULE_CLOSING) + `<Hangup/>`);
+/**
+ * 따뜻한 종결부(SCHEDULE 공통) — 기분 질문 + 일상 대화 2턴 + 마무리 → Hangup.
+ *
+ * 각 자유 발화 질문 뒤에 긴 <Pause>(MOOD_PAUSE_SEC/CHAT_PAUSE_SEC)를 두어 시니어가 충분히
+ * 말할 시간을 준다. 재생한 멘트는 SYSTEM 턴으로 기록한다(closing 멘트는 기록 생략 — 기존 관례).
+ * 첫 SYSTEM 턴(기분)은 MOOD_QUESTION 을 포함하므로 콜백 분류의 자유-발화 경계 마커가 된다.
+ *
+ * @returns xml 과 기록할 SYSTEM 턴들(호출 브랜치가 앞에 SENIOR 턴을 덧붙인다).
+ */
+function scheduleWarmClose(): { xml: string; systemTurns: VoiceMLTurn[] } {
+  const moodSay = `${MOOD_LEAD} ${MOOD_QUESTION}`;
+  const parts: string[] = [say(moodSay), pause(MOOD_PAUSE_SEC)];
+  const systemTurns: VoiceMLTurn[] = [{ role: "SYSTEM", input_kind: "VOICE", text: moodSay }];
+
+  for (const c of CHAT_TURNS) {
+    const chatSay = `${c.ack} ${c.question}`;
+    parts.push(say(chatSay), pause(CHAT_PAUSE_SEC));
+    systemTurns.push({ role: "SYSTEM", input_kind: "VOICE", text: chatSay });
+  }
+
+  parts.push(say(WARM_CLOSING), `<Hangup/>`);
+  return { xml: wrap(parts.join("")), systemTurns };
 }
 
 function buildSchedule(params: VoiceMLParams): VoiceMLResult {
@@ -204,23 +236,22 @@ function buildSchedule(params: VoiceMLParams): VoiceMLResult {
 
   // step === "answer" — DTMF 우선(silent fallback) → 음성 → 무입력.
   if (isValidScheduleDigit(digits)) {
-    // DTMF 확정 → 기분 1턴(전사) 후 종료.
+    // DTMF 확정 → 따뜻한 종결부(기분+일상 대화, 전사 저장만) 후 종료.
+    const close = scheduleWarmClose();
     return {
-      xml: scheduleMoodClose(),
-      turns: [
-        { role: "SENIOR", input_kind: "DTMF", text: digits as string },
-        { role: "SYSTEM", input_kind: "VOICE", text: SCHEDULE_MOOD },
-      ],
+      xml: close.xml,
+      turns: [{ role: "SENIOR", input_kind: "DTMF", text: digits as string }, ...close.systemTurns],
     };
   }
 
   if (hasSpeech(speechResult)) {
-    // 음성 발화 → SENIOR/VOICE 턴 저장 후 기분 질문으로 진행(이행 판정은 콜백 분류가).
+    // 음성 발화 → SENIOR/VOICE 턴 저장 후 따뜻한 종결부로 진행(이행 판정은 콜백 분류가).
+    const close = scheduleWarmClose();
     return {
-      xml: scheduleMoodClose(),
+      xml: close.xml,
       turns: [
         { role: "SENIOR", input_kind: "VOICE", text: (speechResult as string).trim() },
-        { role: "SYSTEM", input_kind: "VOICE", text: SCHEDULE_MOOD },
+        ...close.systemTurns,
       ],
     };
   }
@@ -232,8 +263,9 @@ function buildSchedule(params: VoiceMLParams): VoiceMLResult {
     return { xml, turns: [{ role: "SYSTEM", input_kind: "VOICE", text: SCHEDULE_REASK }] };
   }
 
-  // 재질문 후에도 무입력 → 억지 판정 금지(UNCERTAIN). 기분 1턴 후 종료.
-  return { xml: scheduleMoodClose(), turns: [{ role: "SYSTEM", input_kind: "VOICE", text: SCHEDULE_MOOD }] };
+  // 재질문 후에도 무입력 → 억지 판정 금지(UNCERTAIN). 따뜻한 종결부 후 종료.
+  const close = scheduleWarmClose();
+  return { xml: close.xml, turns: close.systemTurns };
 }
 
 /** 동의/거부 종료 멘트 + 턴(SENIOR 턴 선행) 구성 헬퍼. */

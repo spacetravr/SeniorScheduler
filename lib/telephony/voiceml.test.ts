@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { buildVoiceML, escapeXml, type VoiceMLParams } from "./voiceml";
+import {
+  MOOD_QUESTION,
+  CHAT_TURNS,
+  WARM_CLOSING,
+  MOOD_PAUSE_SEC,
+  CHAT_PAUSE_SEC,
+} from "@/lib/calls/warm-talk";
 
 const nextAction: VoiceMLParams["nextAction"] = (params) =>
   "https://x.test/api/telephony/voiceml?session=s1&token=t1&" + new URLSearchParams(params).toString();
@@ -92,6 +99,63 @@ describe("buildVoiceML — SCHEDULE", () => {
   });
 });
 
+describe("buildVoiceML — SCHEDULE 따뜻한 종결부(기분+일상 2턴)", () => {
+  // 종결부는 3가지 answer 브랜치(DTMF·음성·재질문 후 무입력) 모두 동일 XML.
+  const closeBranches: Array<[string, Partial<VoiceMLParams>]> = [
+    ["DTMF", { step: "answer", digits: "1" }],
+    ["음성", { step: "answer", digits: "", speechResult: "네 먹었어요" }],
+    ["재질문 후 무입력", { step: "answer", digits: "", reasked: true }],
+  ];
+
+  for (const [label, over] of closeBranches) {
+    it(`${label}: 기분 → 일상 2턴 → 마무리 순서 + Pause 길이 + Hangup(재질문 없음)`, () => {
+      const r = buildVoiceML(base(over));
+
+      // 멘트 순서: 기분 → 일상질문1 → 일상질문2 → 마무리 (인덱스 단조 증가로 검증).
+      const iMood = r.xml.indexOf(MOOD_QUESTION);
+      const iChat1 = r.xml.indexOf(CHAT_TURNS[0].question);
+      const iChat2 = r.xml.indexOf(CHAT_TURNS[1].question);
+      const iClose = r.xml.indexOf(WARM_CLOSING);
+      expect(iMood).toBeGreaterThanOrEqual(0);
+      expect(iChat1).toBeGreaterThan(iMood);
+      expect(iChat2).toBeGreaterThan(iChat1);
+      expect(iClose).toBeGreaterThan(iChat2);
+
+      // 각 맞장구 멘트도 질문 앞에 포함.
+      expect(r.xml).toContain(CHAT_TURNS[0].ack);
+      expect(r.xml).toContain(CHAT_TURNS[1].ack);
+
+      // Pause 길이: 기분 1회 + 일상 2회.
+      expect(r.xml).toContain(`<Pause length="${MOOD_PAUSE_SEC}"/>`);
+      const chatPauses = r.xml.split(`<Pause length="${CHAT_PAUSE_SEC}"/>`).length - 1;
+      expect(chatPauses).toBe(CHAT_TURNS.length);
+
+      // 종료 흐름 — 더 묻지 않음.
+      expect(r.xml).toContain("<Hangup/>");
+      expect(r.xml).not.toContain("<Gather");
+    });
+  }
+
+  it("종결부 SYSTEM 턴: 기분(경계 마커) + 일상 2턴 기록, closing 멘트는 턴 미기록", () => {
+    const r = buildVoiceML(base({ step: "answer", digits: "1" }));
+    const systemTurns = r.turns.filter((t) => t.role === "SYSTEM");
+    // 기분 1 + 일상 2 = 3개.
+    expect(systemTurns).toHaveLength(CHAT_TURNS.length + 1);
+    // 첫 SYSTEM 턴은 MOOD_QUESTION 을 포함(콜백 자유-발화 경계 마커).
+    expect(systemTurns[0].text).toContain(MOOD_QUESTION);
+    // closing 은 재생만 하고 턴으로 남기지 않음.
+    expect(r.turns.some((t) => t.text.includes(WARM_CLOSING))).toBe(false);
+    // 선행 SENIOR 응답 턴은 그대로 유지.
+    expect(r.turns[0]).toEqual({ role: "SENIOR", input_kind: "DTMF", text: "1" });
+  });
+
+  it("종결부에는 의료 조언/버튼 안내 문구가 없다(가드레일)", () => {
+    const r = buildVoiceML(base({ step: "answer", digits: "1" }));
+    expect(r.xml).not.toContain("눌러 주세요");
+    expect(r.xml).not.toMatch(/병원.*가세요|약.*드세요|진료/);
+  });
+});
+
 describe("buildVoiceML — CONSENT", () => {
   it("intro: 동의 안내+고지 Say + speech dtmf Gather + SYSTEM 턴(음성 유도)", () => {
     const r = buildVoiceML(base({ purpose: "CONSENT", step: "intro" }));
@@ -154,5 +218,18 @@ describe("buildVoiceML — CONSENT", () => {
     expect(r.xml).toContain("<Hangup/>");
     expect(r.xml).not.toContain("<Gather");
     expect(r.turns.some((t) => t.input_kind === "DTMF")).toBe(false);
+  });
+
+  it("CONSENT 는 따뜻한 대화(기분/일상) 확장 대상이 아니다 — 종결부 없음", () => {
+    for (const over of [
+      { step: "answer" as const, digits: "1" },
+      { step: "answer" as const, speechResult: "네 동의합니다" },
+      { step: "answer" as const, speechResult: "아니요 괜찮습니다" },
+    ]) {
+      const r = buildVoiceML(base({ purpose: "CONSENT", ...over }));
+      expect(r.xml).not.toContain(MOOD_QUESTION);
+      expect(r.xml).not.toContain(CHAT_TURNS[0].question);
+      expect(r.xml).not.toContain(WARM_CLOSING);
+    }
   });
 });
