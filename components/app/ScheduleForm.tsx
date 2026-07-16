@@ -28,7 +28,7 @@ type Repeat = "DAILY" | "WEEKDAY" | "CUSTOM";
 const WEEKDAY_CODES = ["MO", "TU", "WE", "TH", "FR"];
 
 const SCRIPT_PLACEHOLDER =
-  "예: 어머니, 아침 혈압약 드실 시간이에요. 챙겨 드셨나요?";
+  "예: 무릎이 안 좋으셔서 이동 시 조심하시라고 안내해 주세요";
 
 /** 기존 rrule → 폼 초기 상태(repeat/days). */
 function parseRrule(rrule: string | undefined): { repeat: Repeat; days: string[] } {
@@ -265,7 +265,7 @@ export function ScheduleForm(props: Props) {
       </label>
 
       <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium">안내 문구 템플릿</span>
+        <span className="font-medium">기타·고려 사항</span>
         <textarea
           name="script_template"
           required
@@ -275,6 +275,9 @@ export function ScheduleForm(props: Props) {
           placeholder={SCRIPT_PLACEHOLDER}
           className="resize-none rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
         />
+        <span className="break-keep text-xs leading-relaxed text-text-muted">
+          적어 주시면 통화 안내 멘트에 자연스럽게 반영됩니다.
+        </span>
       </label>
 
       {/* 반복 */}
