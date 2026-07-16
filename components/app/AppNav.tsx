@@ -15,6 +15,7 @@ import {
   Settings,
   type LucideIcon,
 } from "lucide-react";
+import { CreditBadge, CreditBadgeCompact } from "@/components/app/CreditBadge";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -47,8 +48,9 @@ export function BrandWordmark({ className = "" }: { className?: string }) {
 /** 모바일 상단 브랜드 헤더 (데스크톱은 사이드바가 브랜드 표기 담당). */
 export function MobileHeader() {
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-bg/85 px-5 py-3 backdrop-blur md:hidden">
+    <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-bg/85 px-5 py-3 backdrop-blur md:hidden">
       <BrandWordmark className="text-lg" />
+      <CreditBadgeCompact />
     </header>
   );
 }
@@ -74,6 +76,10 @@ export function DesktopSidebar() {
           </Link>
         );
       })}
+      {/* 사이드바 하단: 잔여 크레딧 → 결제 페이지 진입 */}
+      <div className="mt-auto pt-4">
+        <CreditBadge />
+      </div>
     </aside>
   );
 }
