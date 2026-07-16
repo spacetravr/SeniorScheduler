@@ -9,7 +9,13 @@ import {
   type Metrics,
   type WaitlistRow,
 } from "./lib";
-import { demoMetrics, type ChannelDatum, type MetricsView } from "./demo-data";
+import {
+  demoMetrics,
+  demoWaitlist,
+  type ChannelDatum,
+  type DemoWaitlistItem,
+  type MetricsView,
+} from "./demo-data";
 import { ChannelBarChart, FunnelChart } from "./charts";
 
 export const runtime = "nodejs";
@@ -154,6 +160,16 @@ function ChannelTableRow({ r, muted }: { r: ChannelRow; muted?: boolean }) {
       <td className="px-3 py-2 text-right tabular-nums text-text-muted">
         {pct(r.submit, r.view)}
       </td>
+    </tr>
+  );
+}
+
+function DemoWaitlistRow({ w }: { w: DemoWaitlistItem }) {
+  return (
+    <tr className="border-t border-text-muted/10">
+      <td className="whitespace-nowrap px-3 py-2 text-text-muted">{w.dateLabel}</td>
+      <td className="whitespace-nowrap px-3 py-2 text-text-muted">{w.channel}</td>
+      <td className="whitespace-nowrap px-3 py-2 text-text">{w.maskedEmail}</td>
     </tr>
   );
 }
@@ -341,6 +357,54 @@ export default async function AdminMetricsPage({
               Supabase Table Editor
             </a>
             에서 확인하실 수 있습니다.
+          </p>
+        </section>
+      )}
+
+      {/* 4-데모. 대기자 현황 (데모 모드에서만, 마스킹 샘플 목록) */}
+      {isDemo && (
+        <section className="mb-4">
+          <SectionTitle
+            desc={`이메일을 남긴 대기자 총 ${demoWaitlist.length}명입니다. 최근 20명을 표시합니다.`}
+          >
+            대기자 현황
+          </SectionTitle>
+          <div className="overflow-x-auto rounded-base border border-text-muted/20">
+            <table className="w-full border-collapse text-sm">
+              <thead className="bg-surface text-text-muted">
+                <tr>
+                  <Th align="left">등록일</Th>
+                  <Th align="left">채널</Th>
+                  <Th align="left">이메일</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {demoWaitlist.slice(0, 20).map((w, i) => (
+                  <DemoWaitlistRow key={i} w={w} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {demoWaitlist.length > 20 && (
+            <details className="mt-3 rounded-base border border-text-muted/20">
+              <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-text">
+                전체 {demoWaitlist.length}명 보기 (외 {demoWaitlist.length - 20}명)
+              </summary>
+              <div className="overflow-x-auto border-t border-text-muted/15">
+                <table className="w-full border-collapse text-sm">
+                  <tbody>
+                    {demoWaitlist.slice(20).map((w, i) => (
+                      <DemoWaitlistRow key={i} w={w} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          )}
+
+          <p className="mt-2 text-xs text-text-muted break-keep">
+            개인정보 보호를 위해 이메일 일부만 표시합니다. (샘플 데이터)
           </p>
         </section>
       )}
