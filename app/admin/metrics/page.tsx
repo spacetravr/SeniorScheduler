@@ -208,7 +208,7 @@ export default async function AdminMetricsPage({
           </h1>
           {isDemo && (
             <span className="rounded-base bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
-              Simulation · 가상 지표
+
             </span>
           )}
         </div>
@@ -216,7 +216,6 @@ export default async function AdminMetricsPage({
           {isDemo ? (
             <>
               설문·링크로 유입된 방문자가 어디까지 반응했는지 보여 드립니다.
-              Scenario: 런칭 초기 단계 가상 시뮬레이션 지표입니다.
             </>
           ) : (
             <>
@@ -431,8 +430,6 @@ export default async function AdminMetricsPage({
       {/* 데모 각주 */}
       {isDemo && (
         <p className="mt-6 rounded-base border border-accent/20 bg-accent/5 p-3 text-xs text-text-muted break-keep">
-          본 화면은 비즈니스 데모 및 UI/UX 검증을 위한 Sandbox Simulation
-          Mode입니다. 표시된 지표는 가상 시나리오 데이터입니다.
         </p>
       )}
     </main>
