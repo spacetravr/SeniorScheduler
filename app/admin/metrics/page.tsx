@@ -2,8 +2,6 @@ import { cookies } from "next/headers";
 import { getAdminClient } from "@/lib/supabase/admin";
 import {
   computeMetrics,
-  eventKo,
-  fmtKstDateLabel,
   fmtKstDateTime,
   pct,
   type ChannelRow,
@@ -11,6 +9,8 @@ import {
   type Metrics,
   type WaitlistRow,
 } from "./lib";
+import { demoMetrics, type ChannelDatum, type MetricsView } from "./demo-data";
+import { ChannelBarChart, FunnelChart } from "./charts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,6 +74,18 @@ async function loadMetrics(): Promise<Metrics> {
   );
 }
 
+/** 실집계 Metrics → 그래프 공용 뷰모델. (데모는 demo-data가 이미 이 형태) */
+function toView(m: Metrics): MetricsView {
+  return {
+    summary: {
+      visitors: m.summary.visitors,
+      clickTry: m.summary.clickTry,
+      waitlist: m.summary.waitlist,
+    },
+    channels: m.channels as ChannelDatum[],
+  };
+}
+
 // ── 프레젠테이션 조각 ─────────────────────────────────────────────────────────
 function SummaryCard({
   label,
@@ -87,8 +99,8 @@ function SummaryCard({
   return (
     <div className="rounded-base border border-text-muted/15 bg-surface p-4">
       <p className="text-sm text-text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-text">{value}</p>
-      <p className="mt-1 text-xs text-text-muted">{sub}</p>
+      <p className="mt-1 text-2xl font-semibold text-text tabular-nums">{value}</p>
+      <p className="mt-1 text-xs text-text-muted break-keep">{sub}</p>
     </div>
   );
 }
@@ -103,7 +115,7 @@ function SectionTitle({
   return (
     <div className="mb-3">
       <h2 className="text-base font-semibold text-text">{children}</h2>
-      {desc && <p className="mt-1 text-sm text-text-muted">{desc}</p>}
+      {desc && <p className="mt-1 text-sm text-text-muted break-keep">{desc}</p>}
     </div>
   );
 }
@@ -133,13 +145,13 @@ function ChannelTableRow({ r, muted }: { r: ChannelRow; muted?: boolean }) {
       <td className={`whitespace-nowrap px-3 py-2 ${base}`}>
         {muted ? "테스트 유입 (집계 제외)" : r.source}
       </td>
-      <td className={`px-3 py-2 text-right ${base}`}>{r.view}</td>
-      <td className={`px-3 py-2 text-right ${base}`}>{r.clickTry}</td>
-      <td className="px-3 py-2 text-right text-text-muted">
+      <td className={`px-3 py-2 text-right tabular-nums ${base}`}>{r.view}</td>
+      <td className={`px-3 py-2 text-right tabular-nums ${base}`}>{r.clickTry}</td>
+      <td className="px-3 py-2 text-right tabular-nums text-text-muted">
         {pct(r.clickTry, r.view)}
       </td>
-      <td className={`px-3 py-2 text-right ${base}`}>{r.submit}</td>
-      <td className="px-3 py-2 text-right text-text-muted">
+      <td className={`px-3 py-2 text-right tabular-nums ${base}`}>{r.submit}</td>
+      <td className="px-3 py-2 text-right tabular-nums text-text-muted">
         {pct(r.submit, r.view)}
       </td>
     </tr>
@@ -150,22 +162,33 @@ function ChannelTableRow({ r, muted }: { r: ChannelRow; muted?: boolean }) {
 export default async function AdminMetricsPage({
   searchParams,
 }: {
-  searchParams: { pw?: string };
+  searchParams: { pw?: string; demo?: string };
 }) {
   if (!isAuthed(searchParams.pw)) {
     return <PasswordGate />;
   }
 
-  const m = await loadMetrics();
-  const s = m.summary;
+  const isDemo = searchParams.demo === "1";
+
+  // 실데이터는 지금과 동일하게 DB 집계. 데모 모드만 샘플 데이터로 교체.
+  const m: Metrics | null = isDemo ? null : await loadMetrics();
+  const view: MetricsView = isDemo ? demoMetrics : toView(m!);
+  const s = view.summary;
 
   return (
     <main className="mx-auto max-w-3xl p-4 sm:p-6">
       <header className="mb-6">
-        <h1 className="text-xl font-semibold text-text">
-          Senior Scheduler 수요 지표 대시보드
-        </h1>
-        <p className="mt-1 text-sm text-text-muted">
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl font-semibold text-text break-keep">
+            Senior Scheduler 수요 지표 대시보드
+          </h1>
+          {isDemo && (
+            <span className="rounded-base bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
+              샘플 데이터
+            </span>
+          )}
+        </div>
+        <p className="mt-1 text-sm text-text-muted break-keep">
           설문·링크로 유입된 방문자가 어디까지 반응했는지 보여 드립니다. 아래 숫자는
           테스트 유입(<span className="font-medium">test</span>)을 제외한 실제
           수요 데이터입니다.
@@ -196,203 +219,138 @@ export default async function AdminMetricsPage({
         />
       </section>
 
-      {/* 2. 퍼널 흐름 안내 */}
-      <section className="mb-8 rounded-base border border-text-muted/15 bg-surface p-4">
-        <h2 className="mb-2 text-base font-semibold text-text">
-          방문자는 이렇게 3단계로 반응합니다
-        </h2>
-        <ol className="space-y-2 text-sm text-text-muted">
-          <li>
-            <span className="font-medium text-text">① 페이지 방문</span>{" "}
-            <span className="text-xs">(랜딩 /)</span> — 랜딩에 도착해 서비스를 봤습니다.
-            같은 브라우저는 새로고침해도 1회만 셉니다.
-          </li>
-          <li>
-            <span className="font-medium text-text">② 사전등록 클릭</span>{" "}
-            <span className="text-xs">([사전등록하기] → /preregister 진입)</span> —
-            사전등록 페이지로 넘어갔다는 관심 신호입니다.
-          </li>
-          <li>
-            <span className="font-medium text-text">③ 이메일 제출</span>{" "}
-            <span className="text-xs">(/preregister에서 대기자 등록)</span> — 대기자로
-            이메일을 남겼습니다. 가장 강한 수요 신호입니다.
-          </li>
-        </ol>
+      {/* 2. 퍼널 그래프 */}
+      <section className="mb-8">
+        <SectionTitle desc="방문 대비 각 단계까지 남은 비율을 막대 길이로 보여 드립니다.">
+          퍼널 요약
+        </SectionTitle>
+        <div className="rounded-base border border-text-muted/15 bg-surface p-4">
+          <FunnelChart summary={s} />
+          <p className="mt-3 text-xs text-text-muted break-keep">
+            방문 → 사전등록 클릭(/preregister 진입) → 이메일 제출 순의 3단계 반응
+            흐름입니다. 막대 길이는 방문 수를 100%로 본 상대 비율입니다.
+          </p>
+        </div>
       </section>
 
-      {/* 3. 채널별 퍼널 */}
+      {/* 3. 채널별 가로 막대 차트 */}
       <section className="mb-8">
-        <SectionTitle desc="어느 채널에서 온 방문자가 더 잘 반응했는지 비교합니다.">
+        <SectionTitle desc="어느 채널에서 온 방문자가 더 많이·잘 반응했는지 방문 수 기준으로 비교합니다.">
           채널별 반응
         </SectionTitle>
-        <div className="overflow-x-auto rounded-base border border-text-muted/20">
-          <table className="w-full border-collapse text-sm">
-            <thead className="bg-surface text-text-muted">
-              <tr>
-                <Th align="left">유입 채널</Th>
-                <Th>방문</Th>
-                <Th>사전등록 클릭</Th>
-                <Th>클릭률</Th>
-                <Th>이메일 제출</Th>
-                <Th>전환율</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {m.channels.length === 0 ? (
-                <tr>
-                  <td
-                    className="px-3 py-6 text-center text-text-muted"
-                    colSpan={6}
-                  >
-                    아직 수집된 방문이 없습니다.
-                  </td>
-                </tr>
-              ) : (
-                m.channels.map((r) => <ChannelTableRow key={r.source} r={r} />)
-              )}
-              {m.testChannel && (
-                <ChannelTableRow r={m.testChannel} muted />
-              )}
-            </tbody>
-          </table>
+        <div className="rounded-base border border-text-muted/15 bg-surface p-4">
+          <ChannelBarChart channels={view.channels} />
         </div>
-        <ul className="mt-2 space-y-1 text-xs text-text-muted">
+
+        {/* 채널 상세 표(차트 아래 보조) */}
+        <details className="mt-4 rounded-base border border-text-muted/20">
+          <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-text">
+            채널별 상세 수치 표 열기
+          </summary>
+          <div className="overflow-x-auto border-t border-text-muted/15">
+            <table className="w-full border-collapse text-sm">
+              <thead className="bg-surface text-text-muted">
+                <tr>
+                  <Th align="left">유입 채널</Th>
+                  <Th>방문</Th>
+                  <Th>사전등록 클릭</Th>
+                  <Th>클릭률</Th>
+                  <Th>이메일 제출</Th>
+                  <Th>전환율</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {view.channels.length === 0 ? (
+                  <tr>
+                    <td
+                      className="px-3 py-6 text-center text-text-muted"
+                      colSpan={6}
+                    >
+                      아직 수집된 방문이 없습니다.
+                    </td>
+                  </tr>
+                ) : (
+                  view.channels.map((r) => (
+                    <ChannelTableRow key={r.source} r={r} />
+                  ))
+                )}
+                {m?.testChannel && <ChannelTableRow r={m.testChannel} muted />}
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <ul className="mt-2 space-y-1 text-xs text-text-muted break-keep">
           <li>· 클릭률 = 사전등록 클릭(사전등록 페이지 진입) ÷ 방문. 전환율 = 이메일 제출 ÷ 방문.</li>
           <li>· utm_source가 없는 유입은 &quot;(직접)&quot;으로 표시됩니다.</li>
           <li>· &quot;테스트 유입&quot; 줄은 본인·팀 테스트(test)로, 위 합계·요약에서 제외됩니다.</li>
         </ul>
       </section>
 
-      {/* 4. 일별 추이 */}
-      <section className="mb-8">
-        <SectionTitle desc="최근 7일간 하루별 반응 추이입니다 (KST 날짜 기준).">
-          일별 추이
-        </SectionTitle>
-        <div className="overflow-x-auto rounded-base border border-text-muted/20">
-          <table className="w-full border-collapse text-sm">
-            <thead className="bg-surface text-text-muted">
-              <tr>
-                <Th align="left">날짜</Th>
-                <Th>방문</Th>
-                <Th>사전등록 클릭</Th>
-                <Th>제출</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {m.days.map((d) => (
-                <tr key={d.dateKey} className="border-t border-text-muted/10">
-                  <td className="whitespace-nowrap px-3 py-2 text-text">
-                    {fmtKstDateLabel(d.dateKey)}
-                  </td>
-                  <td className="px-3 py-2 text-right text-text">{d.view}</td>
-                  <td className="px-3 py-2 text-right text-text">{d.click}</td>
-                  <td className="px-3 py-2 text-right text-text">{d.submit}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* 5. 최근 활동 */}
-      <section className="mb-8">
-        <SectionTitle desc="가장 최근에 일어난 방문·클릭·제출 20건입니다.">
-          최근 활동
-        </SectionTitle>
-        <div className="overflow-x-auto rounded-base border border-text-muted/20">
-          <table className="w-full border-collapse text-sm">
-            <thead className="bg-surface text-text-muted">
-              <tr>
-                <Th align="left">시각</Th>
-                <Th align="left">활동</Th>
-                <Th align="left">채널</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {m.recent.length === 0 ? (
+      {/* 4. 대기자 현황 (실데이터 모드에서만) */}
+      {!isDemo && m && (
+        <section className="mb-4">
+          <SectionTitle desc={`이메일을 남긴 대기자 총 ${m.waitlistTotal}명입니다.`}>
+            대기자 현황
+          </SectionTitle>
+          <div className="overflow-x-auto rounded-base border border-text-muted/20">
+            <table className="w-full border-collapse text-sm">
+              <thead className="bg-surface text-text-muted">
                 <tr>
-                  <td
-                    className="px-3 py-6 text-center text-text-muted"
-                    colSpan={3}
-                  >
-                    아직 활동이 없습니다.
-                  </td>
+                  <Th align="left">시각</Th>
+                  <Th align="left">채널</Th>
+                  <Th align="left">이메일</Th>
                 </tr>
-              ) : (
-                m.recent.map((e, i) => (
-                  <tr key={i} className="border-t border-text-muted/10">
-                    <td className="whitespace-nowrap px-3 py-2 text-text-muted">
-                      {fmtKstDateTime(e.at)}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-text">
-                      {eventKo(e.type)}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-text-muted">
-                      {e.source}
+              </thead>
+              <tbody>
+                {m.waitlistRecent.length === 0 ? (
+                  <tr>
+                    <td
+                      className="px-3 py-6 text-center text-text-muted"
+                      colSpan={3}
+                    >
+                      아직 대기자가 없습니다.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                ) : (
+                  m.waitlistRecent.map((w, i) => (
+                    <tr key={i} className="border-t border-text-muted/10">
+                      <td className="whitespace-nowrap px-3 py-2 text-text-muted">
+                        {fmtKstDateTime(w.at)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-text-muted">
+                        {w.source}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-text">
+                        {w.email}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-xs text-text-muted break-keep">
+            개인정보 보호를 위해 이메일 일부만 표시합니다. 전체 명단·CSV 내보내기는{" "}
+            <a
+              href={SUPABASE_TABLE_EDITOR_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary underline"
+            >
+              Supabase Table Editor
+            </a>
+            에서 확인하실 수 있습니다.
+          </p>
+        </section>
+      )}
 
-      {/* 6. 대기자 현황 */}
-      <section className="mb-4">
-        <SectionTitle desc={`이메일을 남긴 대기자 총 ${m.waitlistTotal}명입니다.`}>
-          대기자 현황
-        </SectionTitle>
-        <div className="overflow-x-auto rounded-base border border-text-muted/20">
-          <table className="w-full border-collapse text-sm">
-            <thead className="bg-surface text-text-muted">
-              <tr>
-                <Th align="left">시각</Th>
-                <Th align="left">채널</Th>
-                <Th align="left">이메일</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {m.waitlistRecent.length === 0 ? (
-                <tr>
-                  <td
-                    className="px-3 py-6 text-center text-text-muted"
-                    colSpan={3}
-                  >
-                    아직 대기자가 없습니다.
-                  </td>
-                </tr>
-              ) : (
-                m.waitlistRecent.map((w, i) => (
-                  <tr key={i} className="border-t border-text-muted/10">
-                    <td className="whitespace-nowrap px-3 py-2 text-text-muted">
-                      {fmtKstDateTime(w.at)}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-text-muted">
-                      {w.source}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-text">
-                      {w.email}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-2 text-xs text-text-muted">
-          개인정보 보호를 위해 이메일 일부만 표시합니다. 전체 명단·CSV 내보내기는{" "}
-          <a
-            href={SUPABASE_TABLE_EDITOR_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary underline"
-          >
-            Supabase Table Editor
-          </a>
-          에서 확인하실 수 있습니다.
+      {/* 데모 각주 */}
+      {isDemo && (
+        <p className="mt-6 rounded-base border border-accent/20 bg-accent/5 p-3 text-xs text-text-muted break-keep">
+          이 화면은 샘플 데이터입니다. 실데이터는 데모 모드 해제 후 확인하세요.
         </p>
-      </section>
+      )}
     </main>
   );
 }
