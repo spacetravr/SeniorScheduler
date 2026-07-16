@@ -1,6 +1,15 @@
 import type { Metadata } from "next";
+import { Chakra_Petch } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+
+/** 브랜드 워드마크 전용 폰트 (각진·뾰족한 타이포). CSS 변수 --font-brand 로 노출. 본문 미사용. */
+const brandFont = Chakra_Petch({
+  subsets: ["latin"],
+  weight: "700",
+  variable: "--font-brand",
+  display: "swap",
+});
 
 const SITE_NAME = "Senior Scheduler";
 const SITE_TITLE = "Senior Scheduler · 전화 한 통으로 부모님 일정 챙기기";
@@ -33,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={brandFont.variable}>
       <head>
         <link
           rel="stylesheet"

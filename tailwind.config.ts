@@ -20,6 +20,9 @@ const config: Config = {
         border: "var(--color-border)",
         text: "var(--color-text)",
         "text-muted": "var(--color-text-muted)",
+        "senior-1": "var(--color-senior-1)",
+        "senior-2": "var(--color-senior-2)",
+        "senior-3": "var(--color-senior-3)",
       },
       borderRadius: {
         base: "var(--radius-base)",
@@ -29,6 +32,8 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
+        /* 브랜드 워드마크 전용 (뾰족한 각진 타이포) — 본문엔 사용 금지. */
+        brand: ["var(--font-brand)"],
       },
     },
   },

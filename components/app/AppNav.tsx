@@ -8,7 +8,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home,
-  Users,
   CalendarDays,
   Phone,
   ClipboardList,
@@ -19,9 +18,9 @@ import { CreditBadge, CreditBadgeCompact } from "@/components/app/CreditBadge";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
+// 5탭. 피보호자 관리는 대시보드 카드의 "관리" 링크로 진입(/app/seniors 페이지 유지).
 const NAV: NavItem[] = [
   { href: "/app", label: "대시보드", icon: Home },
-  { href: "/app/seniors", label: "피보호자", icon: Users },
   { href: "/app/schedules", label: "일정", icon: CalendarDays },
   { href: "/app/calls", label: "통화", icon: Phone },
   { href: "/app/reports", label: "리포트", icon: ClipboardList },
@@ -33,12 +32,12 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-/** 브랜드 워드마크 — 랜딩 헤더와 동일한 타이포(tracking-tight)로 통일. */
+/** 브랜드 워드마크 — 전용 브랜드 폰트(font-brand, 각진 타이포)로 통일. */
 export function BrandWordmark({ className = "" }: { className?: string }) {
   return (
     <Link
       href="/app"
-      className={`font-bold tracking-tight text-primary ${className}`}
+      className={`font-brand font-bold tracking-tight text-primary ${className}`}
     >
       Senior Scheduler
     </Link>
@@ -87,7 +86,7 @@ export function DesktopSidebar() {
 export function MobileTabBar() {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t border-border bg-bg md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-bg md:hidden">
       {NAV.map((item) => {
         const active = isActive(pathname, item.href);
         const Icon = item.icon;
