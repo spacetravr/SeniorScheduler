@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home,
+  Users,
   CalendarDays,
   Phone,
   ClipboardList,
@@ -19,6 +20,7 @@ type NavItem = { href: string; label: string; icon: LucideIcon };
 
 const NAV: NavItem[] = [
   { href: "/app", label: "대시보드", icon: Home },
+  { href: "/app/seniors", label: "피보호자", icon: Users },
   { href: "/app/schedules", label: "일정", icon: CalendarDays },
   { href: "/app/calls", label: "통화", icon: Phone },
   { href: "/app/reports", label: "리포트", icon: ClipboardList },
@@ -79,7 +81,7 @@ export function DesktopSidebar() {
 export function MobileTabBar() {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-bg md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t border-border bg-bg md:hidden">
       {NAV.map((item) => {
         const active = isActive(pathname, item.href);
         const Icon = item.icon;
