@@ -1,20 +1,17 @@
 /**
  * 대시보드 (/app)
- * - 오늘의 일정: getTodayCallInstances() 실데이터.
- * - 주간 이행률 / 최근 통화 결과: getRecentReports() 실데이터. 0건이면 안내 문구(빈 상태) 유지.
+ * - 피보호자 0명: 온보딩 스텝(OnboardingSteps)이 화면 그 자체가 된다.
+ * - 피보호자 1명+: 피보호자별 to-do 카드(오늘의 일정 + 수행 여부)를 세로 나열.
+ *   수행 여부는 오늘(KST) 세션·리포트를 schedule_id로 매칭해 도출. (lib 수정 없이 page 내 조합)
+ * - 주간 이행률: getRecentReports() 실데이터. "최근 통화 결과" 섹션은 제거됨.
  */
 import Link from "next/link";
-import { Hand, UserPlus, CalendarPlus } from "lucide-react";
+import { CalendarPlus } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
-import {
-  SessionStatusBadge,
-  AdherenceStatusBadge,
-  ConsentBadge,
-} from "@/components/app/StatusBadge";
-import { EmptyState } from "@/components/app/EmptyState";
-import { fmtTime, fmtDate, kstYmd } from "@/components/app/format";
-import { scheduleTypeLabel } from "@/lib/contracts/domain";
+import { kstYmd } from "@/components/app/format";
 import { getConsentStatus } from "@/components/app/consent";
+import { OnboardingSteps } from "@/components/app/OnboardingSteps";
+import { SeniorTodoCard, type SeniorTodo } from "@/components/app/SeniorTodoCard";
 import {
   getTodayCallInstances,
   getSeniors,
@@ -75,16 +72,14 @@ export default async function DashboardPage() {
   const hasSeniors = seniors.length > 0;
   const hasReports = reports.length > 0;
 
-  const sessionById = new Map(sessions.map((s) => [s.id, s]));
-  const seniorName = new Map(seniors.map((s) => [s.id, s.name]));
-  const scheduleById = new Map(schedules.map((s) => [s.id, s]));
+  const todayYmd = todayYmdKst(new Date());
 
   // 본인 동의(동의 콜) 대기 중인 피보호자 — 대리동의는 됐으나 본인 동의가 아직인 경우
   const awaitingSelfConsent = seniors.filter(
     (s) => getConsentStatus(s) === "SELF_PENDING",
   );
 
-  // 피보호자별 활성 일정 수 — 대시보드 피보호자 카드에 표시.
+  // 피보호자별 활성 일정 수 — 카드 프로필 헤더에 표시.
   const activeScheduleCount = new Map<string, number>();
   for (const sch of schedules) {
     if (!sch.active) continue;
@@ -94,12 +89,42 @@ export default async function DashboardPage() {
     );
   }
 
-  // 최근 7일(오늘 포함) 이행률 집계 — 리포트 created_at(KST 오프셋)의 날짜 부분으로 그룹핑.
-  const todayYmd = todayYmdKst(new Date());
+  // 오늘(KST) SCHEDULE 세션을 schedule_id 로 인덱싱 → 리포트 이행상태로 오늘의 수행 여부 도출.
+  // reports 는 session_id 로 매칭. 리포트 없이 불발(MISSED)된 세션은 MISSED 로 표시.
+  const reportBySession = new Map(reports.map((r) => [r.session_id, r]));
+  const todayStatusBySchedule = new Map<string, SeniorTodo["status"]>();
+  for (const s of sessions) {
+    if (s.schedule_id == null) continue;
+    if (kstYmd(s.scheduled_at) !== todayYmd) continue;
+    if (todayStatusBySchedule.has(s.schedule_id)) continue; // 세션은 최신순 → 첫 건이 최신
+    const report = reportBySession.get(s.id);
+    const status: SeniorTodo["status"] = report
+      ? report.adherence_status
+      : s.status === "MISSED"
+        ? "MISSED"
+        : null;
+    todayStatusBySchedule.set(s.schedule_id, status);
+  }
+
+  // 피보호자별 오늘의 to-do — instances(오늘 KST 인스턴스, 발신시각 순)를 senior 로 그룹핑.
+  const todosBySenior = new Map<string, SeniorTodo[]>();
+  for (const inst of instances) {
+    const arr = todosBySenior.get(inst.senior.id) ?? [];
+    arr.push({
+      scheduleId: inst.schedule.id,
+      scheduledAt: inst.scheduled_at,
+      title: inst.schedule.title,
+      type: inst.schedule.type,
+      status: todayStatusBySchedule.get(inst.schedule.id) ?? null,
+    });
+    todosBySenior.set(inst.senior.id, arr);
+  }
+
+  // 최근 7일(오늘 포함) 이행률 집계 — 리포트 created_at(KST)의 날짜 부분으로 그룹핑.
   const weekDays = Array.from({ length: 7 }, (_, i) => addDaysYmd(todayYmd, i - 6));
   const reportsByDay = new Map<string, typeof reports>();
   for (const r of reports) {
-    const ymd = kstYmd(r.created_at); // UTC 오프셋도 KST 달력일로 정규화
+    const ymd = kstYmd(r.created_at);
     const arr = reportsByDay.get(ymd) ?? [];
     arr.push(r);
     reportsByDay.set(ymd, arr);
@@ -117,21 +142,22 @@ export default async function DashboardPage() {
     };
   });
 
-  const recentReports = reports.slice(0, 3);
+  // ── 피보호자 0명: 온보딩 화면 ─────────────────────────────────
+  if (!hasSeniors) {
+    return (
+      <div className="flex flex-col gap-8">
+        <PageHeader title="대시보드" subtitle={todayLabelKst()} />
+        <OnboardingSteps />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="대시보드" subtitle={todayLabelKst()} />
 
-      {/* 빠른 등록 — 피보호자 유무와 무관하게 상시 노출 */}
-      <section aria-label="빠른 등록" className="grid grid-cols-2 gap-3">
-        <Link
-          href="/app/seniors"
-          className="flex items-center justify-center gap-2 rounded-base border border-border bg-bg px-4 py-3.5 text-sm font-semibold text-primary shadow-card transition-colors hover:bg-primary-soft"
-        >
-          <UserPlus className="h-5 w-5 shrink-0" aria-hidden strokeWidth={2} />
-          피보호자 등록
-        </Link>
+      {/* 빠른 등록 — 일정 등록 단독 CTA (피보호자 등록은 네비 탭/온보딩에서 진입) */}
+      <section aria-label="빠른 등록">
         <Link
           href="/app/schedules"
           className="flex items-center justify-center gap-2 rounded-base border border-border bg-bg px-4 py-3.5 text-sm font-semibold text-primary shadow-card transition-colors hover:bg-primary-soft"
@@ -155,93 +181,29 @@ export default async function DashboardPage() {
         </div>
       ) : null}
 
-      {!hasSeniors ? (
-        <EmptyState
-          icon={Hand}
-          title="Senior Scheduler를 시작해 볼까요?"
-          description="부모님을 등록하고 통화 동의를 완료한 뒤, 복약·병원 일정을 추가하면 예약한 시간에 자동으로 전화를 걸어드려요."
-          action={{ href: "/app/seniors", label: "피보호자 등록하기" }}
-        />
-      ) : null}
-
-      {/* 피보호자 목록 (실데이터) — 등록된 피보호자가 있을 때만 노출 */}
-      {hasSeniors ? (
-        <section className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">
-              피보호자
-              <span className="ml-1.5 text-sm font-normal text-text-muted tabular-nums">
-                {seniors.length}명
-              </span>
-            </h2>
-            <Link href="/app/seniors" className="text-sm font-medium text-primary">
-              관리
-            </Link>
-          </div>
-          <div className="flex flex-col gap-2">
-            {seniors.map((s) => {
-              const count = activeScheduleCount.get(s.id) ?? 0;
-              return (
-                <Link
-                  key={s.id}
-                  href="/app/seniors"
-                  className="flex items-center gap-4 rounded-base border border-border bg-bg p-4 shadow-card transition-colors hover:border-primary"
-                >
-                  <div className="flex flex-1 flex-col gap-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="break-keep font-medium">{s.name}</span>
-                      <span className="break-keep text-sm text-text-muted">
-                        {s.relationship}
-                      </span>
-                    </div>
-                    <span className="break-keep text-sm text-text-muted">
-                      활성 일정 {count}건
-                    </span>
-                  </div>
-                  <ConsentBadge senior={s} />
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
-
-      {/* 오늘의 일정 (실데이터) */}
+      {/* 피보호자별 오늘의 to-do 카드 */}
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">오늘의 일정</h2>
-          <Link href="/app/schedules" className="text-sm font-medium text-primary">
-            전체 일정
+          <h2 className="text-base font-semibold">
+            오늘의 일정
+            <span className="ml-1.5 text-sm font-normal text-text-muted tabular-nums">
+              피보호자 {seniors.length}명
+            </span>
+          </h2>
+          <Link href="/app/seniors" className="text-sm font-medium text-primary">
+            피보호자 관리
           </Link>
         </div>
-        {instances.length === 0 ? (
-          <p className="break-keep rounded-base bg-surface p-5 text-sm text-text-muted">
-            {hasSeniors
-              ? "오늘 예정된 안내 전화가 없어요. 일정에서 발신을 켜면 여기에 표시됩니다."
-              : "피보호자와 일정을 등록하면 오늘의 안내 전화가 여기에 표시됩니다."}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {instances.map((inst) => (
-              <Link
-                key={inst.schedule.id}
-                href="/app/schedules"
-                className="flex items-center gap-4 rounded-base border border-border bg-bg p-4 shadow-card transition-colors hover:border-primary"
-              >
-                <span className="w-14 shrink-0 text-lg font-bold tabular-nums">
-                  {fmtTime(inst.scheduled_at)}
-                </span>
-                <div className="flex flex-1 flex-col gap-0.5">
-                  <span className="break-keep font-medium">{inst.schedule.title}</span>
-                  <span className="break-keep text-sm text-text-muted">
-                    {inst.senior.name} · {scheduleTypeLabel[inst.schedule.type]}
-                  </span>
-                </div>
-                <SessionStatusBadge status="SCHEDULED" />
-              </Link>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-col gap-4">
+          {seniors.map((s) => (
+            <SeniorTodoCard
+              key={s.id}
+              senior={s}
+              activeCount={activeScheduleCount.get(s.id) ?? 0}
+              todos={todosBySenior.get(s.id) ?? []}
+            />
+          ))}
+        </div>
       </section>
 
       {/* 주간 이행률 (실데이터) */}
@@ -261,9 +223,7 @@ export default async function DashboardPage() {
               <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
                 <span
                   className={`flex h-9 w-full items-center justify-center rounded-base text-xs font-semibold ${
-                    d.done
-                      ? "bg-primary text-bg"
-                      : "bg-bg text-text-muted"
+                    d.done ? "bg-primary text-bg" : "bg-bg text-text-muted"
                   }`}
                   aria-label={
                     !d.hasReport ? "기록 없음" : d.done ? "이행" : "미이행"
@@ -278,58 +238,6 @@ export default async function DashboardPage() {
         ) : (
           <p className="break-keep text-sm leading-relaxed text-text-muted">
             아직 통화 기록이 없습니다. 발신이 시작되면 주간 이행률이 여기에
-            표시됩니다.
-          </p>
-        )}
-      </section>
-
-      {/* 최근 통화 결과 (실데이터) */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-semibold">최근 통화 결과</h2>
-        {hasReports ? (
-          <>
-            <div className="flex flex-col gap-2">
-              {recentReports.map((r) => {
-                const session = sessionById.get(r.session_id);
-                const name = session ? seniorName.get(session.senior_id) : undefined;
-                const schedule =
-                  session && session.schedule_id != null
-                    ? scheduleById.get(session.schedule_id)
-                    : undefined;
-                const isConsent = session?.purpose === "CONSENT";
-                const title = isConsent
-                  ? "동의 확인 전화"
-                  : schedule?.title ?? "안내 전화";
-                return (
-                  <Link
-                    key={r.id}
-                    href={session ? `/app/calls/${session.id}` : "/app/calls"}
-                    className="flex flex-col gap-2 rounded-base border border-border bg-bg p-4 shadow-card transition-colors hover:border-primary"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="break-keep text-sm text-text-muted">
-                        {fmtDate(r.created_at)}
-                        {name ? ` · ${name}` : ""} · {title}
-                      </span>
-                      <AdherenceStatusBadge status={r.adherence_status} />
-                    </div>
-                    <p className="line-clamp-2 break-keep text-sm leading-relaxed">
-                      {r.summary}
-                    </p>
-                  </Link>
-                );
-              })}
-            </div>
-            <Link
-              href="/app/reports"
-              className="text-sm font-medium text-primary"
-            >
-              전체 리포트
-            </Link>
-          </>
-        ) : (
-          <p className="break-keep rounded-base bg-surface p-5 text-sm text-text-muted">
-            아직 통화 기록이 없습니다. 발신이 시작되면 최근 통화 결과가 여기에
             표시됩니다.
           </p>
         )}
