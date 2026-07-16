@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   classify,
+  classifyByRules,
   classifyDtmf,
   classifyKeywords,
   classifyConsent,
@@ -44,6 +45,32 @@ describe("classifyKeywords — 우선순위(부정>연기>긍정)", () => {
   });
 });
 
+describe("classify — 음성(VOICE) 폴백 (DTMF 없이 실시간 SpeechResult/전사)", () => {
+  it("DTMF 턴 없이 VOICE 발화만으로 룰 판정(가속 경로)", async () => {
+    // 음성 우선 전환: 실시간 SpeechResult 가 SENIOR/VOICE 턴으로 저장돼 룰 분류로 흐른다.
+    const r = await classify([{ text: "네 아까 다 먹었어요", input_kind: "VOICE" }]);
+    expect(r.status).toBe("DONE");
+    expect(r.method).toBe("KEYWORD");
+  });
+
+  it("VOICE 부정 발화 → NOT_DONE", async () => {
+    const r = await classify([{ text: "아직 안 먹었어", input_kind: "VOICE" }]);
+    expect(r.status).toBe("NOT_DONE");
+    expect(r.method).toBe("KEYWORD");
+  });
+
+  it("VOICE 모호 발화 + LLM 없음 → UNCERTAIN(억지 판정 금지)", async () => {
+    const r = await classify([{ text: "어 그, 뭐더라", input_kind: "VOICE" }]);
+    expect(r.status).toBe("UNCERTAIN");
+    expect(r.method).toBe("NONE");
+  });
+
+  it("classifyByRules: VOICE 는 키워드, 애매하면 null(→ LLM/UNCERTAIN)", () => {
+    expect(classifyByRules({ text: "네 먹었어요", input_kind: "VOICE" })).toEqual({ status: "DONE", method: "KEYWORD" });
+    expect(classifyByRules({ text: "음 글쎄", input_kind: "VOICE" })).toBeNull();
+  });
+});
+
 describe("classifyConsent — 동의 콜 판정", () => {
   it("DTMF 1=GRANTED, 2=DENIED", () => {
     expect(classifyConsent({ text: "1", input_kind: "DTMF" })).toBe("GRANTED");
@@ -52,6 +79,12 @@ describe("classifyConsent — 동의 콜 판정", () => {
   it("음성 동의/거부", () => {
     expect(classifyConsent({ text: "네 좋아요", input_kind: "VOICE" })).toBe("GRANTED");
     expect(classifyConsent({ text: "아니 싫어요", input_kind: "VOICE" })).toBe("DENIED");
+    expect(classifyConsent({ text: "동의합니다", input_kind: "VOICE" })).toBe("GRANTED");
+  });
+  it("음성 우선 멘트 유도 거부 문구 '괜찮습니다' → DENIED", () => {
+    // CONSENT 안내가 거부를 "괜찮습니다"로 유도하므로 이 문맥에서 '괜찮'은 거부.
+    expect(classifyConsent({ text: "괜찮습니다", input_kind: "VOICE" })).toBe("DENIED");
+    expect(classifyConsent({ text: "아니요 됐어요", input_kind: "VOICE" })).toBe("DENIED");
   });
   it("거부가 긍정 토큰보다 우선", () => {
     // "아니 그래" — 거부 우선.

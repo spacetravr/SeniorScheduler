@@ -122,8 +122,11 @@ export async function classify(
 // ── 동의(CONSENT) 콜 분류 — 본인 동의 여부만 판정 ─────────────────────────────
 export type ConsentDecision = "GRANTED" | "DENIED" | "UNCERTAIN";
 
-const CONSENT_DENY_MARKERS = ["아니", "싫", "안할", "안돼", "거부", "관두", "필요없", "하지마"];
-const CONSENT_GRANT_MARKERS = ["네", "예", "좋아", "동의", "할게", "그래", "응", "괜찮", "해줘", "해도"];
+// 음성 우선 전환(2026-07-16): CONSENT 콜 안내 멘트가 거부를 "괜찮습니다"로 유도한다
+// ("원치 않으시면 '괜찮습니다'"). 따라서 "괜찮"은 이 콜 문맥에서 정중한 거부 신호다 →
+// DENY 로 분류(실시간 voiceml 종료 멘트 분기와 콜백 self_consent 판정이 동일 함수로 일관).
+const CONSENT_DENY_MARKERS = ["아니", "싫", "안할", "안돼", "거부", "관두", "필요없", "하지마", "괜찮", "됐"];
+const CONSENT_GRANT_MARKERS = ["네", "예", "좋아", "동의", "할게", "그래", "응", "해줘", "해도"];
 
 /** 동의 응답 판정 (DTMF 1=동의, 2=거부 우선 → 키워드). 애매하면 UNCERTAIN(미기록). */
 export function classifyConsent(resp: SeniorResponse): ConsentDecision {

@@ -44,26 +44,45 @@ function xmlResponse(xml: string, status = 200): NextResponse {
   });
 }
 
-/** Digits 를 POST 바디(form/json) 또는 쿼리에서 추출. */
-async function readDigits(req: Request, url: URL): Promise<string> {
-  const q = url.searchParams.get("Digits") ?? url.searchParams.get("digits");
-  if (q != null) return q.trim();
+/**
+ * Gather 응답(Digits + SpeechResult)을 POST 바디(form/json) 또는 쿼리에서 한 번에 추출.
+ * 바디는 한 번만 소비 가능하므로 두 필드를 같이 읽는다(음성 우선 Gather → 둘 중 하나만 채워짐).
+ */
+async function readGatherInput(req: Request, url: URL): Promise<{ digits: string; speech: string }> {
+  const pick = (source: { get(k: string): unknown }, keys: string[]): string => {
+    for (const k of keys) {
+      const v = source.get(k);
+      if (typeof v === "string") return v.trim();
+    }
+    return "";
+  };
+
+  // 쿼리 우선(action URL 에 실려온 경우) — 없으면 바디.
+  const qDigits = pick(url.searchParams, ["Digits", "digits"]);
+  const qSpeech = pick(url.searchParams, ["SpeechResult", "speechResult", "speech"]);
+  if (qDigits || qSpeech) return { digits: qDigits, speech: qSpeech };
+
   const ct = req.headers.get("content-type") ?? "";
   try {
     if (ct.includes("application/json")) {
       const body = (await req.json()) as Record<string, unknown>;
-      const d = body.Digits ?? body.digits;
-      return typeof d === "string" ? d.trim() : "";
+      const get = (k: string) => body[k];
+      return {
+        digits: pick({ get }, ["Digits", "digits"]),
+        speech: pick({ get }, ["SpeechResult", "speechResult", "speech"]),
+      };
     }
     if (ct.includes("form")) {
       const form = await req.formData();
-      const d = form.get("Digits") ?? form.get("digits");
-      return typeof d === "string" ? d.trim() : "";
+      return {
+        digits: pick(form, ["Digits", "digits"]),
+        speech: pick(form, ["SpeechResult", "speechResult", "speech"]),
+      };
     }
   } catch {
     /* 바디 파싱 실패 → 무입력 처리 */
   }
-  return "";
+  return { digits: "", speech: "" };
 }
 
 async function handle(req: Request): Promise<NextResponse> {
@@ -83,8 +102,8 @@ async function handle(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // Digits 는 인증 후에만 파싱(무인증 바디 처리 방지).
-  const digits = step === "answer" ? await readDigits(req, url) : "";
+  // Gather 응답(Digits/SpeechResult)은 인증 후에만 파싱(무인증 바디 처리 방지).
+  const { digits, speech } = step === "answer" ? await readGatherInput(req, url) : { digits: "", speech: "" };
 
   const supabase = getAdminClient();
   const { data: sessionData, error: sErr } = await supabase
@@ -120,6 +139,7 @@ async function handle(req: Request): Promise<NextResponse> {
     step,
     scriptTemplate,
     digits,
+    speechResult: speech,
     reasked,
     nextAction: (params) => {
       const qs = new URLSearchParams({ session: sessionId, token, ...params });

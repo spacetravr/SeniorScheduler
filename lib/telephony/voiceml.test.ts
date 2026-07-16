@@ -15,12 +15,18 @@ describe("escapeXml", () => {
 });
 
 describe("buildVoiceML — SCHEDULE", () => {
-  it("intro: 인사+고지+안내 Say + DTMF Gather + SYSTEM 턴", () => {
+  it("intro: 인사+고지+음성 유도 Say + speech dtmf Gather + SYSTEM 턴", () => {
     const r = buildVoiceML(base({ step: "intro", scriptTemplate: "혈압약" }));
     expect(r.xml).toContain("<Response>");
     expect(r.xml).toContain("혈압약 확인 전화예요");
     expect(r.xml).toContain("자녀분께 전달"); // 녹음·전사 고지
-    expect(r.xml).toContain('<Gather input="dtmf" numDigits="1"');
+    // 음성 우선: 버튼 안내 제거, 음성 답변 유도 멘트.
+    expect(r.xml).toContain("말씀해 주세요");
+    expect(r.xml).not.toContain("눌러 주세요");
+    // Gather 는 speech+dtmf(silent fallback), 한국어 인식, 자동 발화 종료.
+    expect(r.xml).toContain('<Gather input="speech dtmf" numDigits="1"');
+    expect(r.xml).toContain('speechTimeout="auto"');
+    expect(r.xml).toContain('language="ko-KR"');
     expect(r.xml).toContain("step=answer");
     expect(r.turns).toHaveLength(1);
     expect(r.turns[0]).toMatchObject({ role: "SYSTEM", input_kind: "VOICE" });
@@ -49,10 +55,26 @@ describe("buildVoiceML — SCHEDULE", () => {
     }
   });
 
-  it("answer 무입력(첫 응답): 1회 재질문 Gather(reask=1), DTMF 턴 없음", () => {
+  it("answer + 음성 발화: SENIOR/VOICE 턴 저장 + 기분 질문 후 종료(이행 판정은 콜백)", () => {
+    const r = buildVoiceML(base({ step: "answer", digits: "", speechResult: "네 아까 먹었어요" }));
+    expect(r.xml).toContain("기분은 좀 어떠세요");
+    expect(r.xml).toContain("<Hangup/>");
+    expect(r.xml).not.toContain("<Gather"); // 발화 있으면 재질문 없음
+    expect(r.turns[0]).toEqual({ role: "SENIOR", input_kind: "VOICE", text: "네 아까 먹었어요" });
+    expect(r.turns.some((t) => t.input_kind === "DTMF")).toBe(false);
+  });
+
+  it("answer: DTMF 가 있으면 음성보다 우선(silent fallback)", () => {
+    const r = buildVoiceML(base({ step: "answer", digits: "2", speechResult: "아무 말" }));
+    expect(r.turns[0]).toEqual({ role: "SENIOR", input_kind: "DTMF", text: "2" });
+    expect(r.turns.some((t) => t.input_kind === "VOICE" && t.role === "SENIOR")).toBe(false);
+  });
+
+  it("answer 무입력(첫 응답): 1회 재질문 speech Gather(reask=1), DTMF 턴 없음", () => {
     const r = buildVoiceML(base({ step: "answer", digits: "", reasked: false }));
-    expect(r.xml).toContain("<Gather");
+    expect(r.xml).toContain('<Gather input="speech dtmf"');
     expect(r.xml).toContain("reask=1");
+    expect(r.xml).toContain("말씀해 주세요"); // 재질문도 음성 유도
     expect(r.turns.every((t) => t.input_kind !== "DTMF")).toBe(true);
   });
 
@@ -71,12 +93,41 @@ describe("buildVoiceML — SCHEDULE", () => {
 });
 
 describe("buildVoiceML — CONSENT", () => {
-  it("intro: 동의 안내+고지 Say + Gather + SYSTEM 턴", () => {
+  it("intro: 동의 안내+고지 Say + speech dtmf Gather + SYSTEM 턴(음성 유도)", () => {
     const r = buildVoiceML(base({ purpose: "CONSENT", step: "intro" }));
     expect(r.xml).toContain("안부 확인 서비스");
-    expect(r.xml).toContain("동의하시면 1번");
-    expect(r.xml).toContain("<Gather");
+    expect(r.xml).toContain("동의합니다"); // 음성 유도 멘트
+    expect(r.xml).toContain("괜찮습니다");
+    expect(r.xml).not.toContain("눌러 주세요");
+    expect(r.xml).toContain('<Gather input="speech dtmf"');
     expect(r.turns[0].role).toBe("SYSTEM");
+  });
+
+  it("answer 음성 동의: GRANTED → 동의 종료 + SENIOR/VOICE 턴", () => {
+    const r = buildVoiceML(base({ purpose: "CONSENT", step: "answer", speechResult: "네 동의합니다" }));
+    expect(r.xml).toContain("잘 챙겨드릴게요");
+    expect(r.xml).toContain("<Hangup/>");
+    expect(r.turns[0]).toEqual({ role: "SENIOR", input_kind: "VOICE", text: "네 동의합니다" });
+  });
+
+  it("answer 음성 거부: DENIED → 거부 종료 + SENIOR/VOICE 턴", () => {
+    const r = buildVoiceML(base({ purpose: "CONSENT", step: "answer", speechResult: "아니요 괜찮습니다" }));
+    expect(r.xml).toContain("언제든 자녀분께");
+    expect(r.turns[0]).toEqual({ role: "SENIOR", input_kind: "VOICE", text: "아니요 괜찮습니다" });
+  });
+
+  it("answer 음성 애매(첫 응답): 재질문 Gather + 발화 턴 저장", () => {
+    const r = buildVoiceML(base({ purpose: "CONSENT", step: "answer", speechResult: "어 뭐라고요", reasked: false }));
+    expect(r.xml).toContain('<Gather input="speech dtmf"');
+    expect(r.xml).toContain("reask=1");
+    expect(r.turns[0]).toEqual({ role: "SENIOR", input_kind: "VOICE", text: "어 뭐라고요" });
+  });
+
+  it("answer 음성 애매(재질문 후): 미동의 종료(self_consent 미기록) + 발화 턴", () => {
+    const r = buildVoiceML(base({ purpose: "CONSENT", step: "answer", speechResult: "음 글쎄요", reasked: true }));
+    expect(r.xml).toContain("언제든 자녀분께");
+    expect(r.xml).not.toContain("<Gather");
+    expect(r.turns[0]).toEqual({ role: "SENIOR", input_kind: "VOICE", text: "음 글쎄요" });
   });
 
   it("answer DTMF 1: 동의 종료 멘트 + DTMF 턴", () => {

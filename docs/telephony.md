@@ -37,25 +37,46 @@ Twilio 호환으로 **VoiceML(`<Response><Say><Gather><Pause><Hangup>`) 을 가�
 - 콜백 파서: `clawopsCallbackParser` (`lib/telephony/callback.ts`), 처리: `callback-handler.ts`(공유).
 - 대화 두뇌(분류·리포트·동의 판정)는 벤더 무관 자체 코드(`lib/ai`, `lib/calls`) 재사용.
 
-## VoiceML 시나리오 흐름
+## VoiceML 시나리오 흐름 (음성 우선 — 2026-07-16 전환)
+
+> 시니어가 키패드를 어려워하므로 **음성 응답을 우선 유도**한다. Gather 는
+> `input="speech dtmf"`(음성 우선 + DTMF silent fallback), `language="ko-KR"`,
+> `speechTimeout="auto"`. 멘트에서 버튼 안내는 제거하고 음성 답변을 유도하되, **버튼을
+> 눌러도 여전히 인식**된다(안내만 제거, DTMF 경로 유지).
 
 **SCHEDULE 콜**
 ```
-intro   Say(인사 + "혈압약 확인 전화예요" + 녹음·전사 고지) + Gather(dtmf,1자리,→step=answer)
-answer  ├ DTMF 1/2/3 → SENIOR/DTMF 턴 저장 → Say(기분 질문) + Pause(5s, 전사) + Say(종료) + Hangup
-        ├ 무입력/불명확 & 첫 응답 → Say(재질문) + Gather(→step=answer&reask=1)
-        └ 무입력/불명확 & 재질문 후 → 기분 + 종료 (UNCERTAIN — 억지 판정 금지)
+intro   Say(인사 + "혈압약 확인 전화예요" + 녹음·전사 고지
+            + "하셨으면 '네, 했어요', 아직이면 '아직이요'처럼 말씀해 주세요")
+        + Gather(speech dtmf, numDigits=1, speechTimeout=auto, ko-KR, →step=answer)
+answer  ├ DTMF 1/2/3  → SENIOR/DTMF 턴 저장 → Say(기분) + Pause(5s) + Say(종료) + Hangup
+        ├ SpeechResult → SENIOR/VOICE 턴 저장 → Say(기분) + Pause(5s) + Say(종료) + Hangup
+        │               (이행 판정은 실시간에 하지 않음 — 콜백 분류가 담당)
+        ├ 무입력 & 첫 응답 → Say(음성 유도 재질문) + Gather(→step=answer&reask=1)
+        └ 무입력 & 재질문 후 → 기분 + 종료 (UNCERTAIN — 억지 판정 금지)
 ```
 **CONSENT 콜**
 ```
-intro   Say(서비스 안내 + 녹음·전사 고지) + Gather(dtmf,1자리,→step=answer)
+intro   Say(서비스 안내 + 녹음·전사 고지
+            + "동의하시면 '동의합니다', 원치 않으시면 '괜찮습니다'라고 말씀해 주세요")
+        + Gather(speech dtmf, →step=answer)
 answer  ├ DTMF 1 → 턴 저장 → 동의 종료 멘트 + Hangup
         ├ DTMF 2 → 턴 저장 → 거부 종료 멘트 + Hangup
+        ├ SpeechResult GRANTED → SENIOR/VOICE 턴 → 동의 종료
+        ├ SpeechResult DENIED  → SENIOR/VOICE 턴 → 거부 종료
+        ├ SpeechResult 애매 & 첫 응답 → 발화 턴 저장 + 재질문 Gather
+        ├ SpeechResult 애매 & 재질문 후 → 발화 턴 저장 + 거부 종료(미동의)
         ├ 무입력 & 첫 응답 → 재질문 Gather
         └ 무입력 & 재질문 후 → 거부 종료(self_consent 미기록)
 ```
-- DTMF(Digits)는 `call_turns` 에 SENIOR/DTMF 턴으로 저장 → 콜백 완료 시 DTMF 우선 분류에 사용.
-- 실제 이행/동의 판정은 VoiceML 이 아니라 콜백 완료 시 `lib/ai/classifier` 가 수행(두뇌 위임 금지).
+- DTMF(Digits)/SpeechResult 는 `call_turns` 에 SENIOR/DTMF·SENIOR/VOICE 턴으로 저장 →
+  콜백 완료 시 분류 입력(DTMF 우선 → VOICE 키워드 룰 → LLM → UNCERTAIN)에 사용.
+- 실제 이행 판정은 VoiceML 이 아니라 콜백 완료 시 `lib/ai/classifier` 가 수행(두뇌 위임 금지).
+  CONSENT 만은 종료 멘트를 실시간 갈라야 하므로 `classifyConsent`(lib/ai) 를 그대로 호출한다
+  (로직 복제 없음). 최종 self_consent 성사 판정도 콜백 시 동일 함수(`evaluateConsentGranted`)로 재확인.
+- **벤더 speech 미지원 폴백**: SpeechResult 가 한 번도 안 와도(벤더가 speech Gather 미지원 시)
+  통화는 재질문→기분→종료로 완주하며, 최종 분류는 콜백 시 전사(transcript) 기반으로 성립한다.
+  즉 speech Gather 는 있으면 좋은 가속 경로, 없어도 파이프라인 무결.
 
 ## 콜백 상태 매핑표 (`mapClawopsCallStatus`)
 
@@ -110,8 +131,13 @@ answer  ├ DTMF 1 → 턴 저장 → 동의 종료 멘트 + Hangup
    `TELEPHONY_CALLBACK_SECRET`, `NEXT_PUBLIC_SITE_URL`(공개 도메인) — Vercel + 로컬 동기화.
 2. 마이그레이션 0006 적용(Supabase SQL Editor) — `provider_call_id` 컬럼 존재 확인.
 3. 발신번호(070-5275-3827) 등록/승인 상태 확인.
-4. **VoiceML 호환 검증**: 실콜 1건으로 `<Say language="ko-KR">`·`<Gather input="dtmf">`·`<Pause>`·
-   `<Hangup>` 동작 확인. 태그/속성 이름이 다르면 `voiceml.ts` 조정.
+4. **VoiceML 호환 검증**: 실콜 1건으로 `<Say language="ko-KR">`·`<Gather input="speech dtmf">`·
+   `<Pause>`·`<Hangup>` 동작 확인. 태그/속성 이름이 다르면 `voiceml.ts` 조정.
+4b. **Gather speech 지원 여부 확인**: ClawOps 가 `input="speech dtmf"`/`speechTimeout`/`language`
+   /SpeechResult 콜백 필드를 지원하는지 실콜로 확인. **미지원이어도 통화는 완주**해야 하며(음성 무입력→
+   재질문→기분→종료), 분류는 콜백 전사 기반으로 성립함을 확인. 지원 시 SpeechResult 가 SENIOR/VOICE
+   턴으로 실시간 저장돼 분류 가속 경로가 동작하는지 확인. 필드명이 다르면(SpeechResult 외) 라우트
+   `readGatherInput` 의 키 목록 보정.
 5. **StatusCallback 페이로드 검증**: 실제 `CallStatus`/`AnsweredBy` 문자열 값 확인 → 매핑표 보정.
    Content-Type(form vs json) 확인(라우트는 둘 다 처리).
 6. **전사 API 검증**: `segments[].speaker` 라벨 실제 값 확인 → `transcriptSegmentsToTurns` 의
