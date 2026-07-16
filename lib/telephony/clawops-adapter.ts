@@ -69,6 +69,16 @@ export type ClawOpsConfig = {
 /** 링잉 타임아웃(초) — 이 시간 내 미응답이면 벤더가 no-answer 콜백. 재시도(1분/10분)와 조화. */
 export const CLAWOPS_RING_TIMEOUT_SEC = 30;
 
+/**
+ * 콜백 내 전사 재시도 기본값 — 총 ~30초(10회 × 3초).
+ *
+ * 실콜 확정(2026-07-16): ClawOps 전사 생성은 통화 종료 후 **수십 초** 걸린다(현행 3회×1.5초=4.5초
+ * 로는 항상 미완성). Vercel 함수 300초 한도 내에서 ~30초까지 늘려 콜백 시점 확보율을 높인다.
+ * 그래도 미확보면 디스패치 크론의 전사 백필 단계가 최근 COMPLETED 세션을 훑어 채운다.
+ */
+export const CLAWOPS_TRANSCRIPT_ATTEMPTS = 10;
+export const CLAWOPS_TRANSCRIPT_INTERVAL_MS = 3000;
+
 const DEFAULT_BASE = "https://api.claw-ops.com";
 
 // ── 자체 토큰(HMAC) — VoiceML/콜백 URL 쿼리 인증 ────────────────────────────────
@@ -234,6 +244,9 @@ export class ClawOpsAdapter implements TelephonyAdapter {
       StatusCallbackEvent: "initiated ringing answered completed",
       Timeout: CLAWOPS_RING_TIMEOUT_SEC,
       MachineDetection: "Hangup" as const,
+      // 녹음 미저장(녹음 정책): Twilio 호환 파라미터로 벤더 측 자동 녹음을 끈다. 우리는 전사만
+      // 저장하므로 녹음 파일은 불필요. 효과(ClawOps 가 이 파라미터를 존중하는지)는 실콜에서 검증 예정.
+      Record: false as const,
     };
 
     const res = await this.fetchImpl(`${this.accountBase}/calls`, {
@@ -262,18 +275,20 @@ export class ClawOpsAdapter implements TelephonyAdapter {
   }
 
   /**
-   * 전사 확보(best-effort). POST transcript(생성 요청) → 짧은 재시도로 GET.
-   * 준비 안 됐으면 빈 배열 반환(호출자는 DTMF 턴만으로 분류 진행 — DTMF 우선 원칙).
+   * 전사 확보(best-effort). POST transcript(생성 요청) → 재시도로 GET(기본 10회×3초=~30초).
+   * 준비 안 됐으면 빈 배열 반환(호출자는 DTMF 턴만으로 분류 진행 — DTMF 우선 원칙). 콜백에서
+   * 못 채우면 디스패치 크론의 전사 백필이 이어받는다(transcript-backfill).
    *
-   * @param atIso 전사 턴에 부여할 타임스탬프(콜백 완료 시각, ISO instant).
+   * @param atIso 전사 턴에 부여할 타임스탬프(콜백 완료 시각, ISO instant). 실제 삽입 전 라우트/
+   *   크론이 positionTranscriptTurns 로 경계에 맞게 created_at 을 재부여한다.
    */
   async fetchTranscript(
     callId: string,
     atIso: string,
     opts: { attempts?: number; intervalMs?: number } = {},
   ): Promise<CallbackTurn[]> {
-    const attempts = opts.attempts ?? 3;
-    const intervalMs = opts.intervalMs ?? 1500;
+    const attempts = opts.attempts ?? CLAWOPS_TRANSCRIPT_ATTEMPTS;
+    const intervalMs = opts.intervalMs ?? CLAWOPS_TRANSCRIPT_INTERVAL_MS;
     const url = `${this.accountBase}/calls/${encodeURIComponent(callId)}/transcript`;
     const headers = { Authorization: `Bearer ${this.config.apiKey}` };
 

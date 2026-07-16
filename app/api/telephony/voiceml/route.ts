@@ -9,8 +9,9 @@ export const dynamic = "force-dynamic";
 /**
  * /api/telephony/voiceml — ClawOps 통화 연결 시 재생할 VoiceML(TwiML 호환) 시나리오 라우트.
  *
- * ClawOps 는 발신이 연결되면 이 URL 을 호출하고(GET/POST 모두), Gather 응답(DTMF)도 action 으로
- * 이 URL 에 되돌린다. step 쿼리로 다단계(intro→answer)를 진행한다.
+ * ClawOps 는 발신이 연결되면 이 URL 을 호출하고(GET/POST 모두), Gather 의 DTMF 응답만 action 으로
+ * 이 URL 에 되돌린다(speech 는 action 을 트리거하지 않음 — 실콜 확정). SCHEDULE 은 단일 문서로
+ * intro 한 번에 전체 흐름을 재생하고, DTMF 가 오면 step=answer 로 남은 따뜻한 흐름을 이어 낸다.
  *
  * 인증(가드레일 PII): 시나리오에 피보호자 이름/일정 문구 등 PII 가 포함되므로 쿼리 토큰
  * (HMAC(TELEPHONY_CALLBACK_SECRET, sessionId)) 검증 필수. 미인증 요청은 401.
@@ -103,8 +104,7 @@ async function handle(req: Request): Promise<NextResponse> {
   }
 
   // Gather 응답(Digits/SpeechResult)은 인증 후에만 파싱(무인증 바디 처리 방지).
-  //   - answer: 일정 확인 응답(DTMF/음성).
-  //   - mood/chat1/chat2: 직전 자유 발화 질문의 음성 답(SpeechResult). intro 는 입력 없음.
+  //   - answer: 일정 확인 응답(DTMF, 예외적으로 speech). intro 는 입력 없음.
   const { digits, speech } =
     step === "intro" ? { digits: "", speech: "" } : await readGatherInput(req, url);
 

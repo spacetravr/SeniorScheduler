@@ -5,10 +5,17 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { instanceOnKstDate, kstDateOf } from "@/lib/scheduling/occurrences";
 import { canDispatchScheduleCall, canDispatchConsentCall } from "@/lib/calls/state-machine";
 import { isConsentSessionDue } from "@/lib/calls/consent-scheduling";
-import { runScheduleCall, runConsentCall } from "@/lib/calls/run-call";
+import { runScheduleCall, runConsentCall, classifyAndReportSchedule } from "@/lib/calls/run-call";
 import { createLlmClient } from "@/lib/ai/llm";
-import { selectTelephony } from "@/lib/telephony/provider";
+import { selectTelephony, getConfiguredProvider, resolveClawOpsConfig } from "@/lib/telephony/provider";
 import { TelephonyNotConfiguredError, type TelephonyAdapter } from "@/lib/telephony/types";
+import { ClawOpsAdapter, dedupeTranscriptTurns } from "@/lib/telephony/clawops-adapter";
+import type { CallbackTurn } from "@/lib/telephony/callback";
+import {
+  positionTranscriptTurns,
+  backfillLlmBudget,
+  shouldReclassifyOnBackfill,
+} from "@/lib/telephony/transcript-backfill";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +76,145 @@ async function triggerAsyncCall(
     }
     return "skipped";
   }
+}
+
+/** 전사 백필 조회 윈도우 — 최근 2시간 내 COMPLETED 세션만 대상(오래된 건 전사 유실 인정). */
+const BACKFILL_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+/** 세션 턴을 CallbackTurn 형태로 로드(created_at 오름차순). */
+async function loadTurns(
+  supabase: SupabaseClient,
+  sessionId: string,
+): Promise<CallbackTurn[]> {
+  const { data, error } = await supabase
+    .from("call_turns")
+    .select("role, input_kind, text, created_at")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: true });
+  if (error) {
+    console.error("[backfill] loadTurns:", error.code, error.message);
+    return [];
+  }
+  return (data ?? []).map((t) => ({
+    role: t.role as "SYSTEM" | "SENIOR",
+    input_kind: t.input_kind as "VOICE" | "DTMF",
+    text: (t.text as string) ?? "",
+    at: t.created_at as string,
+  }));
+}
+
+/**
+ * 전사 백필(async·clawops 전용) — 콜백 시점에 전사가 없어 SENIOR 턴이 0건인 COMPLETED 세션을
+ * 최근 2시간 내에서 찾아 전사를 재조회·삽입하고, 필요 시 리포트를 재분류한다.
+ *
+ * 멱등: SENIOR 턴이 삽입되면 다음 tick 에서 "SENIOR 0건" 조건에 걸리지 않아 재실행되지 않는다.
+ * 재분류는 기존 리포트가 UNCERTAIN 이고 새 SENIOR 턴이 생긴 경우에만(shouldReclassifyOnBackfill),
+ * LLM 은 통화당 총 2회 상한 내 남은 예산(backfillLlmBudget)만큼만 사용한다.
+ */
+async function backfillTranscripts(supabase: SupabaseClient, now: Date): Promise<number> {
+  if (getConfiguredProvider() !== "clawops") return 0;
+  const cfg = resolveClawOpsConfig();
+  if (!cfg.ok) return 0;
+  const adapter = new ClawOpsAdapter(cfg.config);
+
+  const windowStartIso = new Date(now.getTime() - BACKFILL_WINDOW_MS).toISOString();
+  const { data: rows, error } = await supabase
+    .from("call_sessions")
+    .select("id, schedule_id, provider_call_id, llm_calls_used, attempt, cost_krw, ended_at")
+    .eq("purpose", "SCHEDULE")
+    .eq("status", "COMPLETED")
+    .not("provider_call_id", "is", null)
+    .gte("ended_at", windowStartIso);
+  if (error) {
+    console.error("[backfill] scan:", error.code, error.message);
+    return 0;
+  }
+
+  let filled = 0;
+  for (const row of rows ?? []) {
+    const sessionId = row.id as string;
+    const callId = row.provider_call_id as string | null;
+    if (!callId) continue;
+
+    const existing = await loadTurns(supabase, sessionId);
+    // 이미 SENIOR 턴이 있으면(실시간 DTMF·이전 백필) 대상 아님 — 멱등.
+    if (existing.some((t) => t.role === "SENIOR")) continue;
+
+    // 전사 재조회(콜백 완료 시각 대신 현재 — position 이 경계에 맞춰 재부여).
+    let transcript: CallbackTurn[] = [];
+    try {
+      transcript = await adapter.fetchTranscript(callId, now.toISOString());
+    } catch (e) {
+      console.error("[backfill] transcript:", e instanceof Error ? e.name : "error");
+      continue;
+    }
+    const fresh = dedupeTranscriptTurns(transcript, existing);
+    const positioned = positionTranscriptTurns(fresh, existing);
+    if (positioned.length === 0) continue; // 아직 전사 미준비 — 다음 tick 재시도.
+
+    await supabase.from("call_turns").insert(
+      positioned.map((t) => ({
+        session_id: sessionId,
+        role: t.role,
+        input_kind: t.input_kind,
+        text: t.text,
+        created_at: t.at,
+      })),
+    );
+    filled += 1;
+
+    // 재분류 판단: 기존 리포트가 UNCERTAIN 이고 새 SENIOR 턴이 생긴 경우에만.
+    const newSeniorCount = positioned.filter((t) => t.role === "SENIOR").length;
+    const { data: reportRow } = await supabase
+      .from("call_reports")
+      .select("id, adherence_status")
+      .eq("session_id", sessionId)
+      .maybeSingle();
+    if (!reportRow) continue;
+    if (!shouldReclassifyOnBackfill(reportRow.adherence_status as string, newSeniorCount)) continue;
+
+    // 남은 LLM 예산 내에서만 재분류(가드레일 3: 통화당 총 2회).
+    const usedSoFar = Number(row.llm_calls_used ?? 0);
+    const llm = createLlmClient(undefined, backfillLlmBudget(usedSoFar));
+    let scheduleTitle = "";
+    if (row.schedule_id) {
+      const { data: sched } = await supabase
+        .from("schedules")
+        .select("title")
+        .eq("id", row.schedule_id as string)
+        .maybeSingle();
+      scheduleTitle = (sched?.title as string | undefined) ?? "";
+    }
+    const merged = await loadTurns(supabase, sessionId); // 삽입 후 정본 순서.
+    const { report, llmCostKrw } = await classifyAndReportSchedule({
+      turns: merged,
+      scheduleTitle,
+      answered: true,
+      attempts: Number(row.attempt ?? 1),
+      llm,
+    });
+
+    await supabase
+      .from("call_reports")
+      .update({
+        adherence_status: report.adherence_status,
+        summary: report.summary,
+        mood_flag: report.mood_flag,
+        health_flag: report.health_flag,
+        prompt_version: report.prompt_version,
+      })
+      .eq("session_id", sessionId);
+
+    // 소비 LLM 누적 + 비용 합산(백필에서 새로 쓴 LLM 원가만 추가 — 회선/전사는 콜백이 이미 기록).
+    await supabase
+      .from("call_sessions")
+      .update({
+        llm_calls_used: usedSoFar + llm.callsUsed(),
+        cost_krw: Math.round((Number(row.cost_krw ?? 0) + llmCostKrw) * 100) / 100,
+      })
+      .eq("id", sessionId);
+  }
+  return filled;
 }
 
 export async function POST(req: Request) {
@@ -285,6 +431,13 @@ export async function POST(req: Request) {
     }
   }
 
+  // ── 전사 백필(async·clawops 전용) ────────────────────────────────────────────
+  // 콜백 시점에 전사가 늦어 SENIOR 턴 0건인 최근 COMPLETED 세션을 채우고 재분류(멱등).
+  let backfilled = 0;
+  if (mode === "async") {
+    backfilled = await backfillTranscripts(supabase, now);
+  }
+
   // ── CONSENT(본인 동의) 콜 디스패치 ─────────────────────────────────────────────
   let consentDispatched = 0;
   let consentSkipped = 0;
@@ -398,6 +551,7 @@ export async function POST(req: Request) {
     skipped,
     due,
     retried,
+    backfilled,
     consentDispatched,
     consentSkipped,
     consentDue,

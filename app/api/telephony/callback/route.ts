@@ -18,6 +18,7 @@ import {
   verifySessionToken,
   dedupeTranscriptTurns,
 } from "@/lib/telephony/clawops-adapter";
+import { positionTranscriptTurns } from "@/lib/telephony/transcript-backfill";
 import {
   processCallback,
   type CallbackStore,
@@ -288,10 +289,12 @@ async function handleClawops(req: Request, secret: string): Promise<NextResponse
           console.error("[callback] transcript:", e instanceof Error ? e.name : "error");
         }
         if (transcriptTurns.length > 0) {
-          // 적응형 Gather 로 이미 실시간 저장된 SENIOR 발화와 중복되지 않게 dedup 후 삽입.
+          // 이미 저장된 SENIOR 발화(실시간 DTMF 등)와 중복 제거 후, splitAtFreeForm 경계에 맞게
+          // created_at 을 재부여(첫 발화=이행 답은 경계 앞, 나머지=자유 발화는 경계 뒤)한 뒤 삽입.
           const existing = store.getExistingTurns ? await store.getExistingTurns(sessionId) : [];
           const fresh = dedupeTranscriptTurns(transcriptTurns, existing);
-          if (fresh.length > 0) await store.insertTurns(sessionId, fresh);
+          const positioned = positionTranscriptTurns(fresh, existing);
+          if (positioned.length > 0) await store.insertTurns(sessionId, positioned);
         }
         payload = {
           // 전사 확보 시도 자체가 원가 발생 지점 → includeTranscript 는 fetch 결과 기준(dedup 무관).

@@ -99,6 +99,9 @@ export class ClawopsIgnorableStatusError extends Error {
 /**
  * ClawOps CallStatus/AnsweredBy → 중립 이벤트 매핑.
  *   - 기계 응답(AnsweredBy machine/fax) = 음성사서함 → 부재(NO_ANSWER)로 취급(MachineDetection Hangup).
+ *   - **AnsweredBy "unknown"(실콜 관찰값) = human 취급 = 통화 성사**. MachineDetection 이 사람/기계를
+ *     확정하지 못한 경우로, 억지로 부재 처리하면 실제 통화를 유실한다 → 사람으로 간주해 진행한다.
+ *     (machine/fax 만 명시적 기계로 본다. 그 외 값·미지정은 전부 human.)
  *   - 중간 상태(initiated/ringing/queued/in-progress)는 null(무시).
  * @returns 중립 이벤트 또는 null(무시 대상).
  */
@@ -108,6 +111,7 @@ export function mapClawopsCallStatus(
 ): TelephonyCallbackEvent | null {
   const s = (callStatus ?? "").trim().toLowerCase();
   const by = (answeredBy ?? "").trim().toLowerCase();
+  // machine/fax 만 기계(부재). "unknown"·"human"·미지정 등은 전부 사람(성사)로 취급.
   const isMachine = by.includes("machine") || by.includes("fax");
 
   switch (s) {
