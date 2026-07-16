@@ -1,6 +1,8 @@
 /**
  * 설정 (/app/settings) — 로그인 이메일 표시 + 로그아웃(실동작). 알림 설정은 준비 중(placeholder).
  */
+import Link from "next/link";
+import { Coins, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { NotifyToggle } from "@/components/app/NotifyToggle";
 import { LogoutButton } from "@/components/app/LogoutButton";
@@ -35,6 +37,32 @@ export default async function SettingsPage() {
         <div className="rounded-base border border-border bg-bg p-4 shadow-card">
           <PasswordChangeForm />
         </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold">크레딧·결제</h2>
+        <Link
+          href="/app/billing"
+          className="flex items-center gap-3 rounded-base border border-border bg-bg p-4 shadow-card transition-colors hover:border-primary"
+        >
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary"
+            aria-hidden
+          >
+            <Coins className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <div className="flex flex-1 flex-col gap-0.5">
+            <span className="font-medium">크레딧·결제</span>
+            <span className="break-keep text-sm text-text-muted">
+              잔여 크레딧 확인과 충전 (베타 기간 무료)
+            </span>
+          </div>
+          <ChevronRight
+            className="h-5 w-5 shrink-0 text-text-muted"
+            aria-hidden
+            strokeWidth={2}
+          />
+        </Link>
       </section>
 
       <section className="flex flex-col gap-3">
