@@ -205,9 +205,18 @@ export default async function AdminMetricsPage({
           )}
         </div>
         <p className="mt-1 text-sm text-text-muted break-keep">
-          설문·링크로 유입된 방문자가 어디까지 반응했는지 보여 드립니다. 아래 숫자는
-          테스트 유입(<span className="font-medium">test</span>)을 제외한 실제
-          수요 데이터입니다.
+          {isDemo ? (
+            <>
+              설문·링크로 유입된 방문자가 어디까지 반응했는지 보여 드립니다. 아래
+              숫자는 화면 구성 확인용 샘플 데이터입니다.
+            </>
+          ) : (
+            <>
+              설문·링크로 유입된 방문자가 어디까지 반응했는지 보여 드립니다. 아래
+              숫자는 테스트 유입(<span className="font-medium">test</span>)을
+              제외한 실제 수요 데이터입니다.
+            </>
+          )}
         </p>
       </header>
 
