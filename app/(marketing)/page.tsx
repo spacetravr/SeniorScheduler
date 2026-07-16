@@ -53,7 +53,7 @@ export default function LandingPage() {
       {/* 헤더 */}
       <header className="sticky top-0 z-30 border-b border-border bg-bg/85 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8">
-          <span className="text-lg font-bold tracking-tight sm:text-xl">
+          <span className="font-brand text-lg font-bold tracking-tight sm:text-xl">
             Senior Scheduler
           </span>
           <div className="flex items-center gap-4">
