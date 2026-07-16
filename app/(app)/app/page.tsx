@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import {
   SessionStatusBadge,
   AdherenceStatusBadge,
+  ConsentBadge,
 } from "@/components/app/StatusBadge";
 import { EmptyState } from "@/components/app/EmptyState";
 import { fmtTime, fmtDate, kstYmd } from "@/components/app/format";
@@ -83,6 +84,16 @@ export default async function DashboardPage() {
     (s) => getConsentStatus(s) === "SELF_PENDING",
   );
 
+  // 피보호자별 활성 일정 수 — 대시보드 피보호자 카드에 표시.
+  const activeScheduleCount = new Map<string, number>();
+  for (const sch of schedules) {
+    if (!sch.active) continue;
+    activeScheduleCount.set(
+      sch.senior_id,
+      (activeScheduleCount.get(sch.senior_id) ?? 0) + 1,
+    );
+  }
+
   // 최근 7일(오늘 포함) 이행률 집계 — 리포트 created_at(KST 오프셋)의 날짜 부분으로 그룹핑.
   const todayYmd = todayYmdKst(new Date());
   const weekDays = Array.from({ length: 7 }, (_, i) => addDaysYmd(todayYmd, i - 6));
@@ -151,6 +162,48 @@ export default async function DashboardPage() {
           description="부모님을 등록하고 통화 동의를 완료한 뒤, 복약·병원 일정을 추가하면 예약한 시간에 자동으로 전화를 걸어드려요."
           action={{ href: "/app/seniors", label: "피보호자 등록하기" }}
         />
+      ) : null}
+
+      {/* 피보호자 목록 (실데이터) — 등록된 피보호자가 있을 때만 노출 */}
+      {hasSeniors ? (
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold">
+              피보호자
+              <span className="ml-1.5 text-sm font-normal text-text-muted tabular-nums">
+                {seniors.length}명
+              </span>
+            </h2>
+            <Link href="/app/seniors" className="text-sm font-medium text-primary">
+              관리
+            </Link>
+          </div>
+          <div className="flex flex-col gap-2">
+            {seniors.map((s) => {
+              const count = activeScheduleCount.get(s.id) ?? 0;
+              return (
+                <Link
+                  key={s.id}
+                  href="/app/seniors"
+                  className="flex items-center gap-4 rounded-base border border-border bg-bg p-4 shadow-card transition-colors hover:border-primary"
+                >
+                  <div className="flex flex-1 flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="break-keep font-medium">{s.name}</span>
+                      <span className="break-keep text-sm text-text-muted">
+                        {s.relationship}
+                      </span>
+                    </div>
+                    <span className="break-keep text-sm text-text-muted">
+                      활성 일정 {count}건
+                    </span>
+                  </div>
+                  <ConsentBadge senior={s} />
+                </Link>
+              );
+            })}
+          </div>
+        </section>
       ) : null}
 
       {/* 오늘의 일정 (실데이터) */}
