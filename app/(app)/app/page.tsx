@@ -9,8 +9,8 @@ import Link from "next/link";
 import { CalendarPlus } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { kstYmd } from "@/components/app/format";
-import { getConsentStatus } from "@/components/app/consent";
 import { OnboardingSteps } from "@/components/app/OnboardingSteps";
+import { SeniorFormModal } from "@/components/app/SeniorFormModal";
 import { SeniorTodoCard, type SeniorTodo } from "@/components/app/SeniorTodoCard";
 import {
   getTodayCallInstances,
@@ -73,11 +73,6 @@ export default async function DashboardPage() {
   const hasReports = reports.length > 0;
 
   const todayYmd = todayYmdKst(new Date());
-
-  // 본인 동의(동의 콜) 대기 중인 피보호자 — 대리동의는 됐으나 본인 동의가 아직인 경우
-  const awaitingSelfConsent = seniors.filter(
-    (s) => getConsentStatus(s) === "SELF_PENDING",
-  );
 
   // 피보호자별 활성 일정 수 — 카드 프로필 헤더에 표시.
   const activeScheduleCount = new Map<string, number>();
@@ -156,8 +151,9 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-8">
       <PageHeader title="대시보드" subtitle={todayLabelKst()} />
 
-      {/* 빠른 등록 — 일정 등록 단독 CTA (피보호자 등록은 네비 탭/온보딩에서 진입) */}
-      <section aria-label="빠른 등록">
+      {/* 빠른 등록 — 피보호자 등록(모달) + 일정 등록 2버튼 */}
+      <section aria-label="빠른 등록" className="grid grid-cols-2 gap-3">
+        <SeniorFormModal variant="outline" />
         <Link
           href="/app/schedules"
           className="flex items-center justify-center gap-2 rounded-base border border-border bg-bg px-4 py-3.5 text-sm font-semibold text-primary shadow-card transition-colors hover:bg-primary-soft"
@@ -166,20 +162,6 @@ export default async function DashboardPage() {
           일정 등록
         </Link>
       </section>
-
-      {awaitingSelfConsent.length > 0 ? (
-        <div className="flex flex-col gap-1 rounded-base border border-primary bg-primary-soft px-4 py-3">
-          <p className="break-keep text-sm font-semibold text-primary">
-            {awaitingSelfConsent.length === 1
-              ? `${awaitingSelfConsent[0].name}님의 동의 콜이 준비 중입니다`
-              : `${awaitingSelfConsent[0].name}님 외 ${awaitingSelfConsent.length - 1}명의 동의 콜이 준비 중입니다`}
-          </p>
-          <p className="break-keep text-xs leading-relaxed text-text-muted">
-            첫 통화에서 부모님께 직접 동의를 여쭙습니다. 부모님이 동의하시면 일정
-            전화가 시작됩니다.
-          </p>
-        </div>
-      ) : null}
 
       {/* 피보호자별 오늘의 to-do 카드 */}
       <section className="flex flex-col gap-3">
@@ -195,12 +177,13 @@ export default async function DashboardPage() {
           </Link>
         </div>
         <div className="flex flex-col gap-4">
-          {seniors.map((s) => (
+          {seniors.map((s, i) => (
             <SeniorTodoCard
               key={s.id}
               senior={s}
               activeCount={activeScheduleCount.get(s.id) ?? 0}
               todos={todosBySenior.get(s.id) ?? []}
+              colorIndex={i % 3}
             />
           ))}
         </div>
