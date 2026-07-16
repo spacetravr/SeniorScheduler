@@ -28,6 +28,12 @@ describe("mapClawopsCallStatus — 상태 매핑표", () => {
     expect(mapClawopsCallStatus("completed", "machine_end_beep")).toBe("NO_ANSWER");
     expect(mapClawopsCallStatus("completed", "fax")).toBe("NO_ANSWER");
   });
+  it('AnsweredBy "unknown"(실콜 관찰값) → human 취급(성사)', () => {
+    // MachineDetection 이 사람/기계를 확정 못 한 값. 억지 부재 처리 금지 → 사람으로 진행.
+    expect(mapClawopsCallStatus("answered", "unknown")).toBe("ANSWERED");
+    expect(mapClawopsCallStatus("completed", "unknown")).toBe("COMPLETED");
+    expect(mapClawopsCallStatus("completed", "UNKNOWN")).toBe("COMPLETED");
+  });
   it("busy/no-answer 계열 → NO_ANSWER", () => {
     for (const s of ["busy", "no-answer", "no_answer", "noanswer"]) {
       expect(mapClawopsCallStatus(s)).toBe("NO_ANSWER");

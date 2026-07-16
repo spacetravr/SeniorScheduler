@@ -99,6 +99,8 @@ export type SessionPatch = {
   ended_at?: string | null;
   cost_krw?: number | null;
   next_attempt_at?: string | null;
+  /** 이 세션이 지금까지 소비한 LLM 호출 수(가드레일 3 상한 관리 — 백필 재분류 예산 계산용). */
+  llm_calls_used?: number;
 };
 
 /** 콜백 처리에 필요한 저장소 추상화 — 라우트가 Supabase admin 구현을 주입(테스트는 mock). */
@@ -231,6 +233,8 @@ async function completeCall(
       ended_at: endedAt,
       cost_krw: roundKrw(vendorCost + llmCostKrw),
       next_attempt_at: null,
+      // 소비한 LLM 호출 수 기록 → 백필 재분류가 남은 예산(2 - used) 안에서만 LLM 을 쓴다.
+      llm_calls_used: llm.callsUsed(),
     });
     return { status: "ok", action: "COMPLETE" };
   }

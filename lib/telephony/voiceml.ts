@@ -10,13 +10,18 @@
  * 이 모듈은 순수하다: DB·네트워크·시계에 의존하지 않는다. 입력(step/digits/컨텍스트) →
  * XML 문자열 + 기록할 턴 목록만 반환한다. 라우트가 인증·DB·타임스탬프를 담당한다.
  *
- * ── 음성 우선(2026-07-16 결정) ──
- * 시니어가 키패드를 어려워하므로 응답을 **음성 우선**으로 유도한다. Gather 는
- * `input="speech dtmf"`(음성 우선 + DTMF silent fallback). 멘트는 버튼 안내를 빼고
- * 음성 답변("네, 먹었어요"·"아직이요")을 유도한다. 버튼을 눌러도 여전히 인식된다.
- *  - 벤더가 speech 를 미지원해도 파이프라인은 성립한다: SpeechResult 가 한 번도 안 와도
- *    통화는 재질문→기분→종료로 자연스럽게 완주하고, 최종 분류는 콜백 시 전사(transcript)
- *    기반으로 동작한다(speech Gather 는 있으면 좋은 가속 경로, 없어도 무방).
+ * ── 단일 문서 흐름(2026-07-16 실콜 확정) ──
+ * ClawOps 실콜에서 **Gather 의 speech 입력이 action 콜백을 트리거하지 않음**을 실측했다
+ * (사용자 7회 발화에도 voiceml 라우트는 intro 1회만 호출 — step 진행 전무). 따라서 실시간
+ * 음성 기반 step 전환(intro→answer→mood→…)은 이 벤더에서 불가하다. 대응으로 SCHEDULE 흐름을
+ * **하나의 자기완결형 VoiceML 문서**로 재구성한다:
+ *   Say(인사+고지+일정 확인 질문) → Gather(input="dtmf speech", 짧은 timeout, action=answer)
+ *   → 같은 문서에서 이어지는  기분 Say + Pause → 일상1 Say + Pause → 일상2 Say + Pause
+ *   → 마무리 Say + Hangup.
+ * Twilio 의미론상 Gather 는 입력이 없으면 다음 verb 로 진행하므로 action 이 안 와도 전체 따뜻한
+ * 흐름이 재생된다. DTMF 가 오면 answer step 이 남은 흐름(응답 인지 멘트+기분부터)을 이어서
+ * 재생한다(이미 재생된 intro/Gather 부분과 중복되지 않는다 — answer 는 기분부터 시작).
+ * 시니어 발화는 전부 통화 후 전사로 수집한다(라우트/콜백/디스패치 백필).
  *
  * ── 대화 두뇌 위임 금지(가드레일 4) ──
  * SCHEDULE 이행 판정은 여기서 하지 않는다(멘트 재생 + 응답 수집만). 실제 이행 분류는
@@ -25,19 +30,14 @@
  * VoiceML 에 복제하지 않는다). 최종 self_consent 성사 판정도 콜백 시 동일 함수로 재확인된다.
  *
  * ── ARS+ 원칙(CLAUDE.md) ──
- * 무입력/불명확 시 1회 재질문 후 UNCERTAIN 흐름. 억지 판정 금지. 시니어 친화 존댓말·단문.
- *
- * ── 적응형 듣기(2026-07-16 결정) ──
- * 기분·일상 대화 2턴의 "듣기"는 고정 <Pause>(정해진 초 무조건 대기)에서 적응형
- * <Gather input="speech" speechTimeout="auto">(발화 종료=침묵을 감지하면 즉시 다음 질문)로
- * 전환했다. 각 자유 발화 턴이 독립 스텝(mood→chat1→chat2→closing)이 되어, 발화가 끝나면
- * action 이 다음 스텝을 호출한다. 벤더가 speech 를 미지원해 SpeechResult 없이 timeout 으로만
- * 넘어가도 흐름은 동일하게 완주하며(고정 대기와 동등), 발화는 통화 후 전사로 수집된다.
+ * 억지 판정 금지. 시니어 친화 존댓말·단문. DTMF 무입력 시 재질문은 단일 문서에서 무의미하므로
+ * (action 이 안 오면 재질문도 못 함) SCHEDULE 에서는 재질문을 생략한다 — 무입력이면 그대로
+ * 따뜻한 흐름이 이어지고 최종 분류는 콜백 전사가 담당(UNCERTAIN 폴백).
  *
  * ── 녹음 정책 ──
- * 우리는 전사(transcript)만 저장하고 녹음 파일은 다운로드·저장하지 않는다. 실시간 Gather 로
- * 확보한 SpeechResult 는 즉시 SENIOR/VOICE 턴으로 저장하고, 콜백 완료 시 ClawOps transcript
- * API 가 보강하는 전사는 중복 삽입을 피한다(dedupeTranscriptTurns). 원본 오디오 미보관.
+ * 우리는 전사(transcript)만 저장하고 녹음 파일은 다운로드·저장하지 않는다. 통화 중 확보한
+ * DTMF 는 즉시 SENIOR/DTMF 턴으로 저장하고, 콜백/백필이 보강하는 ClawOps 전사는 중복 삽입을
+ * 피한다(dedupeTranscriptTurns). 원본 오디오 미보관.
  */
 
 import { classifyConsent } from "@/lib/ai/classifier";
@@ -46,7 +46,8 @@ import {
   MOOD_QUESTION,
   CHAT_TURNS,
   WARM_CLOSING,
-  WARM_GATHER_TIMEOUT_SEC,
+  MOOD_PAUSE_SEC,
+  CHAT_PAUSE_SEC,
 } from "@/lib/calls/warm-talk";
 
 /** XML 특수문자 이스케이프(멘트·PII 삽입 대비 — script_template/이름 등). */
@@ -67,37 +68,30 @@ function say(text: string): string {
 }
 
 /**
- * <Gather input="speech"> — 자유 발화(기분·일상) 적응형 듣기.
+ * <Pause length> — 자유 발화(기분·일상) 고정 듣기.
  *
- * 고정 <Pause> 대신 음성만 수집한다: 발화가 끝나(침묵) speechTimeout="auto" 가 종료를 감지하면
- * 즉시 action(다음 스텝)을 호출한다. 시니어가 말을 시작하지 않으면 timeout(초)까지만 기다렸다
- * 넘어간다(무발화 상한). DTMF 는 자유 발화 턴에서 수집하지 않는다(판정 대상 아님 — 버튼 유도
- * 안 함). 벤더가 speech 미지원이면 SpeechResult 없이 timeout 으로 넘어가고, 발화는 통화 후
- * 전사로 수집된다(손해 없음 — 기존 고정 대기와 동등).
+ * 정해진 초만큼 통화를 열어두고 다음 verb 로 진행한다. 적응형 종료 감지(speech Gather)는
+ * ClawOps 가 미지원하므로(파일 상단 주석) 고정 대기로 회귀했다. 시니어 발화는 통화 후 전사로
+ * 수집한다. length 는 정수 초.
  */
-function gatherSpeech(actionUrl: string, prompt: string, timeoutSec: number): string {
-  return (
-    `<Gather input="speech" speechTimeout="auto" ${KO} ` +
-    `timeout="${Math.max(1, Math.floor(timeoutSec))}" ` +
-    `action="${escapeXml(actionUrl)}" method="POST">` +
-    say(prompt) +
-    `</Gather>`
-  );
+function pause(sec: number): string {
+  return `<Pause length="${Math.max(1, Math.floor(sec))}"/>`;
 }
 
 /**
- * <Gather> 음성 우선 + DTMF silent fallback 수집 → action(다음 스텝 URL)으로 되돌아옴.
+ * <Gather> DTMF 우선 + speech(있으면) 수집 → action(answer step URL)으로 되돌아옴.
  *
- * `input="speech dtmf"`: 음성 답변을 우선 인식하되, 버튼(DTMF 1자리)을 눌러도 즉시 수용한다.
- * `language="ko-KR"`(음성 인식 언어), `speechTimeout="auto"`(발화 종료 자동 감지).
+ * `input="dtmf speech"`: 버튼(DTMF 1자리)을 우선 수용하되 음성도 인식 대상으로 남긴다(벤더가
+ * speech 를 지원하면 가속 경로). `language="ko-KR"`, `speechTimeout="auto"`, 짧은 `timeout`.
  * 안내 멘트는 Gather 내부에 두어 입력 대기 중에도 재생되게 한다(TwiML 관례).
  *
- * 벤더가 speech 를 미지원하면 이 Gather 는 DTMF 만 수집하게 될 수 있으나, 그래도 무입력→
- * 재질문→기분/종료 흐름으로 완주하며 최종 분류는 콜백 시 전사 기반으로 성립한다.
+ * **실콜 확정**: ClawOps 는 speech 입력으로 action 을 트리거하지 않으므로 실질적으로 DTMF 만
+ * action 을 부른다. DTMF 가 없으면 Gather 는 timeout 후 **같은 문서의 다음 verb(기분 질문)로
+ * 진행**한다(단일 문서 흐름). 즉 action 이 안 와도 따뜻한 흐름 전체가 재생된다.
  */
-function gatherSpeechDtmf(actionUrl: string, prompt: string, timeoutSec = 8): string {
+function gatherDtmf(actionUrl: string, prompt: string, timeoutSec = 6): string {
   return (
-    `<Gather input="speech dtmf" numDigits="1" timeout="${timeoutSec}" ` +
+    `<Gather input="dtmf speech" numDigits="1" timeout="${timeoutSec}" ` +
     `speechTimeout="auto" ${KO} ` +
     `action="${escapeXml(actionUrl)}" method="POST">` +
     say(prompt) +
@@ -136,9 +130,8 @@ function scheduleIntro(scriptTemplate: string): string {
     "하셨으면 '네, 했어요', 아직이면 '아직이요'처럼 말씀해 주세요."
   );
 }
-const SCHEDULE_REASK = "죄송해요, 잘 못 들었어요. 하셨으면 '네', 아직이면 '아직이요'라고 말씀해 주세요.";
 // 일정 확인 이후 재생하는 기분/일상 대화 멘트는 lib/calls/warm-talk 에서 단일 소스로 관리한다
-// (MOOD_LEAD/MOOD_QUESTION/CHAT_TURNS/WARM_CLOSING). 여기서는 재생 XML·기록 턴만 구성한다.
+// (MOOD_LEAD/MOOD_QUESTION/CHAT_TURNS/WARM_CLOSING/*_PAUSE_SEC). 여기서는 재생 XML·기록 턴만 구성.
 
 const CONSENT_INTRO =
   "안녕하세요. 자녀분이 신청하신 안부 확인 서비스예요. " +
@@ -152,35 +145,37 @@ const CONSENT_DENIED_CLOSING = "네, 알겠습니다. 이용을 원하시면 언
 /**
  * 스텝 종류(쿼리 step 값).
  *
- * SCHEDULE 흐름: intro → answer → mood → chat1 → chat2 → (closing 종료).
- *   - intro:  인사+고지, 일정 확인 응답을 speech dtmf Gather 로 수집(→answer).
- *   - answer: 일정 확인 응답 처리 + 기분 질문을 speech Gather 로 물음(→mood).
- *   - mood:   기분 답(SpeechResult) 저장 + 일상 질문1(→chat1).
- *   - chat1:  일상 답1 저장 + 일상 질문2(→chat2).
- *   - chat2:  일상 답2 저장 + 따뜻한 마무리(closing) 재생 후 Hangup(종료 — 더 안 물음).
+ * SCHEDULE 흐름(단일 문서):
+ *   - intro:  인사+고지+일정 확인 질문 Gather(input="dtmf speech", action=answer) →
+ *             **같은 문서에서** 기분 Say + Pause → 일상1 Say + Pause → 일상2 Say + Pause →
+ *             마무리 Say + Hangup. action 이 안 와도(speech 미트리거·무입력) 전체 재생.
+ *   - answer: DTMF 가 와서 action 이 호출된 경우에만 진입. DTMF 턴 저장 + 응답 인지 멘트 +
+ *             기분부터 이어지는 따뜻한 흐름(Pause 포함) + 마무리 + Hangup.
  * CONSENT 흐름: intro → answer(동의/거부/재질문) — 따뜻한 대화 확장 없음.
+ *
+ * (과거 mood/chat1/chat2 스텝은 적응형 speech Gather 전환 시 도입했으나, ClawOps 가 speech
+ *  action 을 미트리거해 무의미 → 단일 문서로 통합하며 제거.)
  */
-export type VoiceMLStep = "intro" | "answer" | "mood" | "chat1" | "chat2";
+export type VoiceMLStep = "intro" | "answer";
 
 export type VoiceMLParams = {
   purpose: "SCHEDULE" | "CONSENT";
   step: VoiceMLStep;
   /** SCHEDULE 콜 안내에 넣을 일정 문구(schedule.script_template). CONSENT 는 무시. */
   scriptTemplate?: string;
-  /** step=answer 에서 수집된 DTMF(빈 문자열/미입력이면 무입력 처리). 자유 발화 스텝은 미사용. */
+  /** step=answer 에서 수집된 DTMF(빈 문자열/미입력이면 무입력 처리). */
   digits?: string;
   /**
-   * 직전 Gather 의 음성 인식 결과(SpeechResult). 벤더 미지원/무발화면 빈 문자열.
-   *   - step=answer: 일정 확인 응답. DTMF 가 있으면 DTMF 우선(silent fallback), 음성만 있으면 저장.
-   *   - step=mood/chat1/chat2: 직전 자유 발화 질문에 대한 답. 있으면 SENIOR/VOICE 턴으로 저장,
-   *     없으면(무발화) 그냥 다음 질문으로 진행(고정 대기와 동등 — 발화는 콜백 전사로 수집).
+   * 직전 Gather 의 음성 인식 결과(SpeechResult). ClawOps 는 speech 로 action 을 트리거하지
+   * 않으므로 SCHEDULE 에서는 실질 미사용(방어적 처리만). CONSENT step=answer 에서는 벤더가
+   * speech action 을 지원할 경우에 한해 실시간 동의/거부 분기에 쓰인다.
    */
   speechResult?: string;
-  /** step=answer 가 재질문 후의 응답인가(true 면 재질문 소진 — 더 묻지 않음). 자유 발화 스텝은 미사용. */
+  /** step=answer 가 재질문 후의 응답인가(CONSENT 재질문 소진 판단용). SCHEDULE 은 미사용. */
   reasked?: boolean;
   /**
    * 다음 스텝 action URL 빌더(라우트가 session/token 을 담아 주입). 예:
-   *   nextAction({ step: "answer", reask: "1" }) → ".../voiceml?session=..&token=..&step=answer&reask=1"
+   *   nextAction({ step: "answer" }) → ".../voiceml?session=..&token=..&step=answer"
    */
   nextAction: (params: Record<string, string>) => string;
 };
@@ -202,125 +197,90 @@ function hasSpeech(speech: string | undefined): boolean {
 /**
  * VoiceML 생성 — step/purpose 에 따라 XML + 기록 턴 반환.
  *
- * 흐름(SCHEDULE — 음성 우선 + 따뜻한 대화 적응형 확장):
- *   intro  → Say(인사+고지+음성 유도) + Gather(speech dtmf →answer)
- *   answer → [유효 DTMF] SENIOR/DTMF 턴 + 기분 질문 Gather(→mood)
- *          → [음성 발화] SENIOR/VOICE 턴 + 기분 질문 Gather(→mood) (이행 판정은 콜백 분류가)
- *          → [무입력 & 첫 응답] 재질문 Gather(→answer&reask=1)
- *          → [무입력 & 재질문 후] 기분 질문 Gather(→mood) (UNCERTAIN — 판정은 콜백이)
- *   mood   → [SpeechResult] SENIOR/VOICE 턴 저장 + 일상 질문1 Gather(→chat1)
- *   chat1  → [SpeechResult] SENIOR/VOICE 턴 저장 + 일상 질문2 Gather(→chat2)
- *   chat2  → [SpeechResult] SENIOR/VOICE 턴 저장 + 따뜻한 마무리(closing) Say + Hangup
+ * 흐름(SCHEDULE — 단일 자기완결 문서):
+ *   intro  → Say(인사+고지+일정 확인 질문) + Gather(dtmf speech, action=answer)
+ *            + 기분 Say + Pause + 일상1 Say + Pause + 일상2 Say + Pause + 마무리 Say + Hangup
+ *          (Gather 에 DTMF 가 오면 action=answer 로 분기, 없으면 같은 문서의 다음 verb 로 진행)
+ *   answer → SENIOR/DTMF 턴 저장 + 응답 인지 멘트 + 기분부터 이어지는 따뜻한 흐름 + 마무리 + Hangup
  *
- * 따뜻한 종결부(적응형): 기분·일상 2턴을 각각 독립 스텝으로 나눠, 각 질문을
- * <Gather input="speech"> 로 물은 뒤 발화가 끝나면(침묵) action 이 다음 스텝을 호출한다.
- * 무발화면 timeout 후 다음 스텝으로 그냥 진행(고정 대기와 동등). 세 answer 브랜치(DTMF/음성/
- * 재질문 후 무입력)는 모두 동일하게 기분 질문(→mood)으로 진입한다. 기분 질문 SYSTEM 턴이
- * MOOD_QUESTION 을 포함하므로 콜백 분류의 자유-발화 경계 마커가 된다(splitAtFreeForm 참조).
+ * 경계 마커: intro/answer 모두 기분·일상 질문 SYSTEM 턴(MOOD_QUESTION·CHAT_TURNS 포함)을 남긴다.
+ * 콜백/백필이 전사 SENIOR 발화를 이 경계 뒤(free-form)와 앞(adherence)으로 위치시켜 분류한다
+ * (positionTranscriptTurns + splitAtFreeForm). 이행 판정은 VoiceML 이 아니라 콜백 두뇌가 수행.
  *
  * 흐름(CONSENT — 음성 우선):
- *   intro  → Say(안내+고지+음성 유도) + Gather(speech dtmf →answer)
+ *   intro  → Say(안내+고지+음성 유도) + Gather(dtmf speech →answer)
  *   answer → [유효 DTMF 1/2] SENIOR/DTMF 턴 + 동의/거부 종료
- *          → [음성 GRANTED] SENIOR/VOICE 턴 + 동의 종료
- *          → [음성 DENIED]  SENIOR/VOICE 턴 + 거부 종료
- *          → [음성 UNCERTAIN & 첫 응답] SENIOR/VOICE 턴 + 재질문
- *          → [음성 UNCERTAIN & 재질문 후] SENIOR/VOICE 턴 + 거부 종료(미동의)
- *          → [무입력 & 첫 응답] 재질문 / [무입력 & 재질문 후] 거부 종료
- *   (종료 멘트 분기는 실시간 편의 — 최종 self_consent 성사 판정은 콜백 완료 시 저장된 턴으로
- *    evaluateConsentGranted(classifyConsent)가 재확인한다.)
+ *          → [음성 GRANTED/DENIED] SENIOR/VOICE 턴 + 동의/거부 종료
+ *          → [음성 UNCERTAIN·무입력] 첫 응답 재질문 / 재질문 후 미동의 종료
+ *   (실시간 종료 멘트 분기는 speech action 을 지원하는 벤더에서만 의미. 미지원 시 Gather 무입력
+ *    으로 문서 종단 → 최종 self_consent 성사 판정은 콜백 완료 시 전사로 evaluateConsentGranted 가 재확인.)
  */
 export function buildVoiceML(params: VoiceMLParams): VoiceMLResult {
   return params.purpose === "CONSENT" ? buildConsent(params) : buildSchedule(params);
 }
 
 /**
- * 따뜻한 대화 스텝 정의 — 각 스텝에서 "물을 다음 질문"과 그 답을 받을 다음 스텝.
+ * 따뜻한 종결부(기분 → 일상1 → 일상2 → 마무리)를 단일 문서에 이어 붙인다.
  *
- * 순서: answer(기분 질문) → mood(일상1) → chat1(일상2) → chat2(마무리·종료).
- * say = 실제 재생 멘트(맞장구+질문). ask 가 null 이면 종결(WARM_CLOSING + Hangup).
- * CHAT_TURNS 길이가 바뀌어도 이 매핑 한 곳만 유지하면 된다(현재 chat1/chat2 = CHAT_TURNS 2개).
- */
-function nextWarmAsk(step: VoiceMLStep): { nextStep: VoiceMLStep; say: string } | null {
-  switch (step) {
-    case "answer":
-      // 기분 질문(경계 마커 — MOOD_QUESTION 포함). 답은 mood 스텝에서 수집.
-      return { nextStep: "mood", say: `${MOOD_LEAD} ${MOOD_QUESTION}` };
-    case "mood":
-      return { nextStep: "chat1", say: `${CHAT_TURNS[0].ack} ${CHAT_TURNS[0].question}` };
-    case "chat1":
-      return { nextStep: "chat2", say: `${CHAT_TURNS[1].ack} ${CHAT_TURNS[1].question}` };
-    default:
-      return null; // chat2 → 종결(closing)
-  }
-}
-
-/**
- * 따뜻한 대화 진행 — 앞선 SENIOR 턴(선택)을 붙인 뒤 다음 질문 Gather(또는 종결)를 낸다.
+ * 각 질문 Say 뒤에 고정 <Pause>(듣기 상한)를 두고, 마지막에 WARM_CLOSING + Hangup 으로 종료한다.
+ * 반환 turns 는 기분·일상 질문 SYSTEM 마커(경계). closing 은 SYSTEM 턴으로 남기지 않는다(관례).
  *
- * @param fromStep 현재 스텝(다음에 물을 질문을 결정).
- * @param seniorTurns 이번 스텝에서 저장할 SENIOR 턴(있으면 free-form 발화 — 콜백 dedup 대상).
+ * @param withAck true 면 기분 질문 앞에 응답 인지 멘트(MOOD_LEAD)를 붙인다(answer step — DTMF 응답
+ *   직후). intro 문서에서는 응답을 아직 못 받았으므로 false(기분 질문만).
  */
-function advanceWarm(
-  fromStep: VoiceMLStep,
-  seniorTurns: VoiceMLTurn[],
-  nextAction: VoiceMLParams["nextAction"],
-): VoiceMLResult {
-  const ask = nextWarmAsk(fromStep);
-  if (!ask) {
-    // 종결: 따뜻한 마무리 재생 후 Hangup(closing 멘트는 SYSTEM 턴으로 남기지 않음 — 기존 관례).
-    return { xml: wrap(say(WARM_CLOSING) + `<Hangup/>`), turns: seniorTurns };
-  }
-  // 다음 질문을 적응형 speech Gather 로 물음 → action 이 다음 스텝을 가리킴.
-  const xml = wrap(gatherSpeech(nextAction({ step: ask.nextStep }), ask.say, WARM_GATHER_TIMEOUT_SEC));
-  return { xml, turns: [...seniorTurns, { role: "SYSTEM", input_kind: "VOICE", text: ask.say }] };
+function warmTail(withAck: boolean): VoiceMLResult {
+  const moodSay = withAck ? `${MOOD_LEAD} ${MOOD_QUESTION}` : MOOD_QUESTION;
+  const chat1 = `${CHAT_TURNS[0].ack} ${CHAT_TURNS[0].question}`;
+  const chat2 = `${CHAT_TURNS[1].ack} ${CHAT_TURNS[1].question}`;
+  const xml =
+    say(moodSay) +
+    pause(MOOD_PAUSE_SEC) +
+    say(chat1) +
+    pause(CHAT_PAUSE_SEC) +
+    say(chat2) +
+    pause(CHAT_PAUSE_SEC) +
+    say(WARM_CLOSING) +
+    `<Hangup/>`;
+  const turns: VoiceMLTurn[] = [
+    { role: "SYSTEM", input_kind: "VOICE", text: moodSay },
+    { role: "SYSTEM", input_kind: "VOICE", text: chat1 },
+    { role: "SYSTEM", input_kind: "VOICE", text: chat2 },
+  ];
+  return { xml, turns };
 }
 
 function buildSchedule(params: VoiceMLParams): VoiceMLResult {
-  const { step, digits, speechResult, reasked, nextAction } = params;
+  const { step, digits, speechResult, nextAction } = params;
   const scriptTemplate = params.scriptTemplate ?? "일정";
 
   if (step === "intro") {
+    // 단일 문서: 인사·고지·질문 Gather + (같은 문서에서) 따뜻한 종결부.
+    // DTMF 가 오면 action=answer 로 분기하고, 없으면 Gather 다음 verb(warmTail)가 그대로 재생된다.
+    const tail = warmTail(false);
     const xml = wrap(
       say(scheduleIntro(scriptTemplate)) +
-        gatherSpeechDtmf(nextAction({ step: "answer" }), "어떠세요?"),
+        gatherDtmf(nextAction({ step: "answer" }), "하셨으면 1번, 아직이면 2번을 눌러주셔도 돼요.") +
+        tail.xml,
     );
-    // 안내 멘트를 SYSTEM 턴으로 기록(전사 대신 우리가 낸 멘트는 확정 텍스트).
-    return { xml, turns: [{ role: "SYSTEM", input_kind: "VOICE", text: scheduleIntro(scriptTemplate) }] };
+    // 안내 멘트 + 종결부 질문 마커를 SYSTEM 턴으로 기록(경계 마커 포함).
+    return {
+      xml,
+      turns: [{ role: "SYSTEM", input_kind: "VOICE", text: scheduleIntro(scriptTemplate) }, ...tail.turns],
+    };
   }
 
-  // 자유 발화 스텝(mood/chat1/chat2): 직전 질문 답(SpeechResult) 저장 후 다음 질문/종결로 진행.
-  //   - 발화 있으면 SENIOR/VOICE 턴 저장(콜백 전사와 중복되지 않게 dedup — callback 라우트).
-  //   - 무발화면 SENIOR 턴 없이 그냥 진행(고정 대기와 동등 — 발화는 콜백 전사로 수집).
-  if (step === "mood" || step === "chat1" || step === "chat2") {
-    const seniorTurns: VoiceMLTurn[] = hasSpeech(speechResult)
-      ? [{ role: "SENIOR", input_kind: "VOICE", text: (speechResult as string).trim() }]
-      : [];
-    return advanceWarm(step, seniorTurns, nextAction);
-  }
-
-  // step === "answer" — DTMF 우선(silent fallback) → 음성 → 무입력. 모두 기분 질문(→mood)으로 진입.
+  // step === "answer" — DTMF 로 action 이 호출된 경우에만 진입(ClawOps 는 speech 로 action 을
+  // 트리거하지 않음). 응답 인지 멘트(withAck) 뒤 기분부터 따뜻한 흐름을 이어 재생한다.
+  const tail = warmTail(true);
+  let seniorTurns: VoiceMLTurn[] = [];
   if (isValidScheduleDigit(digits)) {
-    return advanceWarm("answer", [{ role: "SENIOR", input_kind: "DTMF", text: digits as string }], nextAction);
+    seniorTurns = [{ role: "SENIOR", input_kind: "DTMF", text: digits as string }];
+  } else if (hasSpeech(speechResult)) {
+    // 벤더가 speech action 을 지원하는 예외적 경우 — 발화도 SENIOR/VOICE 턴으로 저장.
+    seniorTurns = [{ role: "SENIOR", input_kind: "VOICE", text: (speechResult as string).trim() }];
   }
-
-  if (hasSpeech(speechResult)) {
-    // 음성 발화 → SENIOR/VOICE 턴 저장 후 기분 질문으로 진행(이행 판정은 콜백 분류가).
-    return advanceWarm(
-      "answer",
-      [{ role: "SENIOR", input_kind: "VOICE", text: (speechResult as string).trim() }],
-      nextAction,
-    );
-  }
-
-  // 무입력.
-  if (!reasked) {
-    // 1회 재질문(ARS+, 음성 유도).
-    const xml = wrap(gatherSpeechDtmf(nextAction({ step: "answer", reask: "1" }), SCHEDULE_REASK));
-    return { xml, turns: [{ role: "SYSTEM", input_kind: "VOICE", text: SCHEDULE_REASK }] };
-  }
-
-  // 재질문 후에도 무입력 → 억지 판정 금지(UNCERTAIN). SENIOR 턴 없이 기분 질문으로 진입.
-  return advanceWarm("answer", [], nextAction);
+  // 불명확/무입력(예: DTMF 9)이면 SENIOR 턴 없이 따뜻한 흐름만 재생(UNCERTAIN — 콜백 전사가 판정).
+  return { xml: wrap(tail.xml), turns: [...seniorTurns, ...tail.turns] };
 }
 
 /** 동의/거부 종료 멘트 + 턴(SENIOR 턴 선행) 구성 헬퍼. */
@@ -338,7 +298,7 @@ function buildConsent(params: VoiceMLParams): VoiceMLResult {
 
   if (step === "intro") {
     const xml = wrap(
-      say(CONSENT_INTRO) + gatherSpeechDtmf(nextAction({ step: "answer" }), "동의하시나요?"),
+      say(CONSENT_INTRO) + gatherDtmf(nextAction({ step: "answer" }), "동의하시나요?"),
     );
     return { xml, turns: [{ role: "SYSTEM", input_kind: "VOICE", text: CONSENT_INTRO }] };
   }
@@ -357,7 +317,7 @@ function buildConsent(params: VoiceMLParams): VoiceMLResult {
     if (decision === "DENIED") return consentClose(false, seniorTurn);
     // UNCERTAIN: 첫 응답이면 1회 재질문(발화는 턴으로 저장), 재질문 후면 미동의 종료.
     if (!reasked) {
-      const xml = wrap(gatherSpeechDtmf(nextAction({ step: "answer", reask: "1" }), CONSENT_REASK));
+      const xml = wrap(gatherDtmf(nextAction({ step: "answer", reask: "1" }), CONSENT_REASK));
       return {
         xml,
         turns: [seniorTurn, { role: "SYSTEM", input_kind: "VOICE", text: CONSENT_REASK }],
@@ -368,7 +328,7 @@ function buildConsent(params: VoiceMLParams): VoiceMLResult {
 
   // 무입력.
   if (!reasked) {
-    const xml = wrap(gatherSpeechDtmf(nextAction({ step: "answer", reask: "1" }), CONSENT_REASK));
+    const xml = wrap(gatherDtmf(nextAction({ step: "answer", reask: "1" }), CONSENT_REASK));
     return { xml, turns: [{ role: "SYSTEM", input_kind: "VOICE", text: CONSENT_REASK }] };
   }
 

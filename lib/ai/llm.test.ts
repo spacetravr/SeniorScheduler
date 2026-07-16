@@ -161,6 +161,43 @@ describe("createLlmClient — Gemini 백엔드 (fetch 모킹)", () => {
     errSpy.mockRestore();
   });
 
+  it("요약 잘림 수정: generationConfig 에 thinkingBudget=0 + 넉넉한 maxOutputTokens", async () => {
+    // Gemini 2.5 계열은 thinking 이 출력 토큰 예산을 소비 → 256 이면 요약이 잘렸다("어르신께
+    // 저녁 약 복"에서 잘림). thinking 을 끄고 출력 상한을 넉넉히 둔다.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: "요약" }] } }] }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const llm = createLlmClient();
+    await llm.complete("s", "u");
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
+    expect(body.generationConfig.maxOutputTokens).toBeGreaterThanOrEqual(512);
+    expect(body.generationConfig.temperature).toBe(0);
+  });
+
+  it("호출 예산 오버라이드: maxCalls=1 이면 1회만 허용(백필 재분류 남은 예산)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: "ok" }] } }] }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const llm = createLlmClient(undefined, 1);
+    expect(await llm.complete("s", "u")).toBe("ok");
+    expect(await llm.complete("s", "u")).toBeNull(); // 예산 소진
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(llm.callsUsed()).toBe(1);
+  });
+
+  it("호출 예산 0(이미 상한 소비): fetch 미호출, 항상 null(룰/템플릿만)", async () => {
+    const fetchMock = vi.fn();
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const llm = createLlmClient(undefined, 0);
+    expect(await llm.complete("s", "u")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("통화당 호출 상한(가드레일 3) 초과 시 null, fetch 미호출", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

@@ -130,7 +130,16 @@ function geminiBackend(apiKey: string, model: string): Backend {
           // Gemini 는 별도 system role 대신 systemInstruction 사용.
           systemInstruction: { parts: [{ text: `${MEDICAL_GUARD_PROMPT}\n\n${system}` }] },
           contents: [{ role: "user", parts: [{ text: user }] }],
-          generationConfig: { maxOutputTokens: 256, temperature: 0 },
+          // maxOutputTokens 상향(2026-07-16 실콜 요약 잘림 수정): Gemini 2.5 계열은 응답 토큰
+          // 예산을 내부 "thinking" 에 먼저 소비한다. 256 이면 thinking 이 예산을 거의 다 써
+          // 실제 출력이 잘리거나(finishReason=MAX_TOKENS) 비게 된다("어르신께 저녁 약 복"에서 잘림
+          // 관찰). thinkingConfig.thinkingBudget=0 으로 thinking 을 끄고(분류·요약 배치엔 불필요)
+          // 출력 상한을 넉넉히 둔다 → 3줄 요약이 온전히 반환된다.
+          generationConfig: {
+            maxOutputTokens: 1024,
+            temperature: 0,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         }),
       });
       if (!res.ok) {
@@ -179,15 +188,22 @@ export function selectBackend(
  */
 export function createLlmClient(
   apiKey: string | undefined = process.env.ANTHROPIC_API_KEY,
+  /**
+   * 이 클라이언트가 허용할 최대 LLM 호출 수. 기본 상한(2). 전사 백필 재분류처럼 세션이 이미
+   * 일부 호출을 소비한 경우, 남은 예산(2 - 기소비)만큼만 허용해 통화당 총 2회 상한을 지킨다.
+   * 0 이면 항상 null(룰/템플릿만).
+   */
+  maxCalls: number = MAX_LLM_CALLS_PER_SESSION,
 ): LlmClient {
   let used = 0;
+  const budget = Math.max(0, Math.min(maxCalls, MAX_LLM_CALLS_PER_SESSION));
   const backend = selectBackend(apiKey);
 
   return {
     callsUsed: () => used,
     complete: async (system: string, user: string): Promise<string | null> => {
       if (!backend) return null; // 스텁 경로(키 없음)
-      if (used >= MAX_LLM_CALLS_PER_SESSION) return null; // 가드레일 3
+      if (used >= budget) return null; // 가드레일 3(세션 예산)
       used += 1;
       return backend(system, user); // 백엔드가 모든 오류를 null 로 강등(throw 없음)
     },

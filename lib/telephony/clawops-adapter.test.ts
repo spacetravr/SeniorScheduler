@@ -171,6 +171,8 @@ describe("ClawOpsAdapter.triggerCall", () => {
     expect(body.To).toBe("+821012345678");
     expect(body.From).toBe("070-5275-3827");
     expect(body.MachineDetection).toBe("Hangup");
+    // 녹음 미저장(녹음 정책) — 벤더 측 자동 녹음 비활성 시도. 효과는 실콜에서 검증 예정.
+    expect(body.Record).toBe(false);
     expect(body.Url).toContain("/api/telephony/voiceml?session=sess-1&token=");
     expect(body.Url).toContain("step=intro");
     expect(body.StatusCallback).toContain("/api/telephony/callback?session=sess-1&token=");
