@@ -52,6 +52,9 @@
   --color-border: #E7DBC8;        /* 웜 보더 */
   --color-text: #263140;          /* 잉크 네이비 (대비 11:1+) */
   --color-text-muted: #6B5D4F;    /* 웜 토프 (대비 5.5:1) */
+  --color-senior-1: #1E3A5F;      /* 피보호자 구분색 1 — 네이비 (장식용, index%3 배정) */
+  --color-senior-2: #C2410B;      /* 피보호자 구분색 2 — 테라코타 */
+  --color-senior-3: #5B7553;      /* 피보호자 구분색 3 — 세이지 그린 */
   --radius-base: 14px;
   --font-sans: 'Pretendard Variable', sans-serif;
   --shadow-card: 0 1px 2px rgba(38,49,64,.04), 0 10px 30px -16px rgba(38,49,64,.18);
