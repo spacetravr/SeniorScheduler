@@ -6,6 +6,24 @@
 
 ---
 
+## 세션 #8 종료 스냅샷 (2026-07-16 밤 — 다음 세션은 여기부터)
+
+### 현재 상태 한 줄
+**main(3de4c37) = 실콜 수정 5건+피보호자 UI 전부 머지, 테스트 311/311. ⚠️ 프로덕션은 미배포(사용자 승인 대기 — 배포 질문에 보류 응답). 프로덕션은 아직 구버전 시나리오 + TELEPHONY_PROVIDER=clawops 활성 상태.**
+
+### 다음 세션 최우선
+1. **배포 승인 받기** → `vercel deploy --prod --yes` → /smoke prod → **0007 마이그레이션**(supabase/migrations/0007_llm_calls_used.sql — llm_calls_used 컬럼) 사용자 SQL Editor 실행
+2. 배포 후 실콜 재테스트: 새 단일 문서 시나리오(전 질문 완주)·전사 백필(디스패치 1~2회 추가 호출로 백필 확인)·Record:false 효과(recording 이벤트 사라지는지)·summary 완전한지
+3. **테스트 일정 "저녁 약과 병원 일정"(매일 18:22) 토글 ON 상태** — 재테스트 시 시각 조정해 재사용, 끝나면 반드시 OFF (크론은 꺼져 있어 자동발신은 안 되지만 디스패치 호출 시 발신됨)
+4. ClawOps 테스트 콜 2건의 **녹음 삭제** (recordingUrl 존재 — DELETE API 시도 or 벤더 문의) + 벤더 측 녹음 영구 비활성 확인
+
+### 머지됨 (미배포)
+- **실콜 수정 5건** (data-api → reviewer PASS → 3de4c37): ① SCHEDULE 시나리오 단일 문서화(Gather 입력 없어도 기분·일상·마무리 전부 재생 — speech action 미트리거 대응) ② 전사 10회×3초 재시도 + **디스패치 백필 단계**(2h 내 COMPLETED·SENIOR 0건 → 전사 삽입·조건부 재분류, LLM 상한은 0007 llm_calls_used로 관리) ③ answeredBy unknown=human ④ summary 잘림 수정(**원인: Gemini thinking이 출력 토큰 소모** → thinkingBudget:0+maxOutputTokens:1024) ⑤ triggerCall Record:false
+- **피보호자 UI** (ui-builder → reviewer FAIL은 분기점 오탐(커밋은 UI 2파일만) → 오케스트레이터 확인 후 머지 8c94f3d): AppNav "피보호자" 탭(6탭, Users 아이콘) + 대시보드 피보호자 카드 섹션(이름·관계·동의 뱃지·활성 일정 수, 다인 분리, 0명 시 미노출)
+
+### 후속 과제 (reviewer 논블로킹 권고)
+- transcript-backfill "첫 발화=이행 답" 가정의 반례(인사말 선행) 테스트·보강 / DTMF 경로에서 SYSTEM 마커 중복 삽입 정리 / 크론 오버랩 시 LLM 예산 경합(락 없음, 단일 크론이면 무해) / CONSENT 콜도 단일 문서화(현재 speech 미트리거 시 intro 후 종료→콜백 전사로 재판정)
+
 ## 세션 #8 (2026-07-16) — 🎉 실콜 E2E 성공 + 실측 버그 발견 + CLOVA 트랙 본격 가동
 
 ### 실콜 E2E 결과 (프로덕션 실경로 2콜 완주 — 총 120원)
