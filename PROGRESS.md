@@ -6,6 +6,17 @@
 
 ---
 
+## 세션 #8 (2026-07-16) — 전수 스모크 PASS + 파비콘 수정 + 실콜 E2E 준비 완료
+
+### 완료
+- **전수 스모크 PASS** (로컬 dev + Playwright 실조작): 공개 플로우(랜딩·preregister·CTA 204·waitlist 201·테스트행 삭제·admin 200) + 인증 플로우 5단계(로그인→피보호자 등록(동의 방어 확인)→일정 등록→토글 ON 유지→대시보드 오늘 인스턴스 표시) + 통화/리포트/설정 화면 렌더. **CONSENT 자동 트리거 실동작 확인**(피보호자 등록 → 동의 콜 세션 자동 생성 → 통화 기록 표시). 테스트 데이터(피보호자·일정·동의콜 세션) 전부 삭제·REST 잔여 0 확인
+- **파비콘 404 수정** (패스트트랙 ac78b33): `app/icon.svg`(브랜드 네이비 전화 아이콘) → 빌드 통과 → 머지 → 프로덕션 배포·스모크 PASS
+- **실콜 E2E 준비 점검 전 항목 통과**: ~~0006 실행 대기~~ → **0006 적용 확인**(provider_call_id REST 200) / 0005 확인 / ClawOps API 200 / Vercel prod env 7종 확인(CLAWOPS 4종·CRON·GEMINI·SITE_URL) / 발신 3중 잠금 재확인(PROVIDER 미설정=mock·dispatch 401·callback/voiceml 401)
+- **남은 것은 사용자 "테스트 해" 한마디뿐**: ① Vercel `TELEPHONY_PROVIDER=clawops` 추가+재배포 ② 테스트 피보호자(번호는 메모리) 동의 등록 → CONSENT 세션 → CRON_SECRET 수동 디스패치 1회 ③ 통화 수신·콜백·리포트 확인(체크리스트 docs/telephony.md 하단) ④ PROVIDER 제거→재배포→데이터 정리. call-dispatch 워크플로는 **disabled 유지**(수동 디스패치 방식이라 enable 불필요)
+- 참고: gh CLI가 이 세션에서 미인증(기존 credential-fill 방식은 권한 정책상 차단됨) — 워크플로 조작 필요 시 사용자 `gh auth login` 필요. E2E엔 불필요
+
+---
+
 ## 세션 #7 종료 스냅샷 (2026-07-16 — 다음 세션은 여기부터)
 
 ### 현재 상태 한 줄
