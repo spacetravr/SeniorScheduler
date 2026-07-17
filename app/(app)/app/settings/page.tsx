@@ -2,7 +2,13 @@
  * 설정 (/app/settings) — 로그인 이메일 표시 + 로그아웃(실동작). 알림 설정은 준비 중(placeholder).
  */
 import Link from "next/link";
-import { Coins, ChevronRight } from "lucide-react";
+import {
+  Coins,
+  ChevronRight,
+  CalendarDays,
+  CalendarRange,
+  CalendarClock,
+} from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { NotifyToggle } from "@/components/app/NotifyToggle";
 import { LogoutButton } from "@/components/app/LogoutButton";
@@ -63,6 +69,39 @@ export default async function SettingsPage() {
             strokeWidth={2}
           />
         </Link>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold">연동</h2>
+        {[
+          { icon: CalendarDays, name: "Google 캘린더" },
+          { icon: CalendarRange, name: "네이버 캘린더" },
+          { icon: CalendarClock, name: "카카오 캘린더" },
+        ].map(({ icon: Icon, name }) => (
+          <div
+            key={name}
+            className="flex items-center gap-3 rounded-base border border-border bg-bg p-4 shadow-card"
+          >
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary"
+              aria-hidden
+            >
+              <Icon className="h-5 w-5" strokeWidth={2} />
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="font-medium">{name}</span>
+              <span className="break-keep text-sm text-text-muted">
+                부모님 일정을 내 캘린더에 자동 동기화
+              </span>
+            </div>
+            <span className="inline-flex shrink-0 items-center rounded-base border border-text-muted px-2 py-0.5 text-xs font-semibold leading-none text-text-muted">
+              곧 지원
+            </span>
+          </div>
+        ))}
+        <p className="break-keep text-xs text-text-muted">
+          외부 도구 연동은 베타 기간 중 순차 오픈됩니다.
+        </p>
       </section>
 
       <section className="flex flex-col gap-3">
