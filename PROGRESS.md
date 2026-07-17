@@ -8,7 +8,11 @@
 
 ## 세션 #10 (2026-07-17) — 리포트·통화·설정 탭 개선 (사용자 피드백 4건, ui 2레인 병렬)
 
-### 완료 (머지 fa8c3cd — reviewer PASS: 경계 0·tsc·테스트 327/327·build. push 완료, **프로덕션 미배포 — 사용자 승인 대기**)
+### ✅ 프로덕션 배포 완료 (2026-07-17, 사용자 "배포해줘")
+- `vercel deploy --prod` READY (dpl_BfG7AVQjtf7AL5TgFFcyQfN8BWL5, 머지 fa8c3cd+docs 94428dc 기준 main)
+- 스모크 prod **PASS**: 랜딩 200(브랜드·CTA·의료 고지) / preregister 200 / CTA 204 / waitlist 201 / 테스트 행 삭제·잔여 0 / admin 무pw 200(폼) / 구도메인 308 / /app 307. 인증 플로우는 로컬 전용 SKIP
+
+### 완료 (머지 fa8c3cd — reviewer PASS: 경계 0·tsc·테스트 327/327·build. push 완료)
 - **리포트 탭** (feat/ui-reports-compact-share): 일별 카드 요약문 기본 접힘("통화별 요약 N건 · 자세히 보기" 토글) — 첫 화면은 수치·상태 칩·피보호자별 상태만. **[요약 보내기]** 모달 — 현재 뷰(일/주/월) 기준 요약 텍스트 미리보기 + [메일로 보내기](mailto, 서버 발송 아님) + [복사하기](clipboard). 순수 함수 `reportSummary.ts`(KST 달력 헬퍼 이관 중앙화 — 세션 #9 후속 과제였던 중복 일부 해소)+테스트 10개
 - **통화기록 탭** (feat/ui-calls-period-settings-integrations): 기간 필터 칩 **[최근 3일](기본)**/[7일]/[전체] — 피보호자 필터와 AND, 숨김 시 "이전 기록 N건 — 전체 보기" 안내. 행 정리(시각 고정폭→구분점+이름→제목→상태 뱃지). `callsPeriod.ts`(KST 정오 앵커 경계)+테스트 6개
 - **설정 탭**: "연동" 섹션 신설 — Google/네이버/카카오 캘린더 카드 3종, **"곧 지원" mock**(billing 패턴, 클릭 동작 없음)
