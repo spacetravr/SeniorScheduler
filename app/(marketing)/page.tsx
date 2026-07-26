@@ -7,6 +7,22 @@
 import Image from "next/image";
 import Link from "next/link";
 import { PreregisterButton } from "@/components/marketing/PreregisterButton";
+import { FaqSection } from "@/components/marketing/FaqSection";
+import { FAQ_ITEMS } from "@/components/marketing/faqData";
+
+/** FAQPage 구조화 데이터(JSON-LD). 화면 FAQ와 동일한 FAQ_ITEMS 단일 소스에서 생성. */
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQ_ITEMS.map((item) => ({
+    "@type": "Question",
+    name: item.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.answer,
+    },
+  })),
+};
 
 const STEPS = [
   {
@@ -50,6 +66,12 @@ const BENEFITS = [
 export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
+      {/* FAQPage 구조화 데이터 */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+
       {/* 헤더 */}
       <header className="sticky top-0 z-30 border-b border-border bg-bg/85 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8">
@@ -84,8 +106,9 @@ export default function LandingPage() {
                 대신 챙겨 드려요
               </h1>
               <p className="max-w-xl text-lg font-medium leading-relaxed text-text-muted sm:text-xl">
-                복약·병원 일정을 등록해 두면, 예약한 시간에 부모님께 자동으로
-                안부 전화를 걸어 확인하고 결과를 알려드립니다.
+                매일 전화로 &lsquo;약 드셨어요?&rsquo; 확인하기, 언제까지
+                이어갈 수 있을까요? 일정을 등록해 두면 예약한 시간에 저희가
+                대신 안부 전화를 걸어 확인하고 결과를 알려드립니다.
               </p>
               <div className="w-full pt-2 sm:w-auto">
                 <PreregisterButton />
@@ -204,6 +227,11 @@ export default function LandingPage() {
           <div className="mx-auto mt-12 w-full max-w-md">
             <ReportPreviewCard />
           </div>
+        </section>
+
+        {/* 자주 묻는 질문 (FAQ) */}
+        <section className="bg-surface">
+          <FaqSection />
         </section>
 
         {/* 마지막 CTA 배너 */}
