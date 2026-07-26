@@ -20,8 +20,15 @@
 - 크레딧 정책 = 표시용(가입 120, 완료 콜당 1). 잔액 차단·실결제 없음, 가격 숫자 미표기 유지
 - ui 에이전트 커밋 누락 사고 1건(feat/ui-settings-chart-banner) → 오케스트레이터가 reviewer 검증본 그대로 커밋해 수습. **교훈: ui/data 에이전트 지시문에 "git commit까지 완료+해시 보고" 명시할 것** (이후 태스크부터 반영됨)
 
+### 세션 #11 후반 (2026-07-26) — 홈페이지·SNS 홍보 자산
+- ✅ 0008·0009 마이그레이션 **적용 확인** (사용자 실행, REST 200 검증). GitHub Actions 정상 가동 확인(daily-report 이슈 #14 생성 중) — 사용자 미수신 원인은 GitHub 알림 메일 설정 쪽(github.com/settings/notifications 확인 필요)
+- **홈페이지 멀티 페이지 확장** (feat/ui-site-pages → reviewer PASS(랜딩 추적·시각 회귀 0) → 머지 095e02e): /about(3단계 상세·상태 뱃지 의미·안심 설계)·/faq(신규 3문답 추가: 집전화/통화 길이/해지)·/terms(베타 v0.9)·/privacy + SiteHeader/SiteFooter/PageShell 공용화(랜딩 인라인 추출, PreregisterButton 추적 유지·신규 페이지는 비추적 PreregisterLink) + sitemap 4경로
+- **SNS 카드뉴스 Set01** (marketing-assets/cardnews/, 커밋 edb219d): 1080×1080 PNG 6장(커버→공감→소개→3단계→안심→CTA), 브랜드 토큰·Pretendard. set01.html 템플릿 수정→로컬 서버(8787)→Playwright 요소 캡처로 재생산 가능 (file:// 차단이라 HTTP 서버 필요)
+- **SNS 운영 키트** (marketing-assets/sns-kit.md): 인스타 프로필 문구·첫 게시물 캡션+해시태그·utm 규칙(instagram/social/campaign별)·2주 캘린더·운영 수칙(미구현 기능·의료 효능 언급 금지)
+- 사용자에게 로그인 계정 전달됨(spacetr17@khu.ac.kr / 임시pw는 이 파일 세션 #4 로그) — **비밀번호 변경 재권고 상태**
+
 ### 다음 할 일 / 사용자 액션
-1. **[사용자] 0008+0009 마이그레이션 실행** — supabase/migrations/0008_notify_settings.sql, 0009_credit_ledger.sql을 SQL Editor에서 순서대로 실행(둘 다 멱등). 미실행이어도 앱은 안전 강등(설정 저장 실패 안내·크레딧 "-" 표시·차감 로그 후 통과)이지만 **배포 전 실행 권장**
+1. ~~[사용자] 0008+0009 마이그레이션 실행~~ ✅ 완료 (2026-07-26, REST 검증)
 2. **[사용자] Resend**: 가입 → API 키 → Vercel env `RESEND_API_KEY`(+선택 `RESEND_FROM`) 등록 시 주간 요약 실발송 시작. 없으면 크론이 skip(무해)
 3. **배포**: 사용자 "배포해줘" 시 /ship (이번 세션 분량 전체)
 4. 후속(reviewer 논블로킹): app/(app)/layout.tsx의 크레딧 조회가 페이지 전환 TTFB에 직렬 — Suspense 분리 검토 / 대시보드 배너용 getCallSessions 페이지네이션 도입 시 판정 주의 / 워크트리 중첩 ESLint 경고(기존 이슈 지속)
