@@ -6,12 +6,13 @@
  * - 주간 이행률: getRecentReports() 실데이터. "최근 통화 결과" 섹션은 제거됨.
  */
 import Link from "next/link";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { kstYmd } from "@/components/app/format";
 import { OnboardingSteps } from "@/components/app/OnboardingSteps";
 import { SeniorFormModal } from "@/components/app/SeniorFormModal";
 import { SeniorTodoCard, type SeniorTodo } from "@/components/app/SeniorTodoCard";
+import { hasThreeConsecutiveMissed } from "@/components/app/missedStreak";
 import {
   getTodayCallInstances,
   getSeniors,
@@ -73,6 +74,15 @@ export default async function DashboardPage() {
   const hasReports = reports.length > 0;
 
   const todayYmd = todayYmdKst(new Date());
+
+  // 피보호자별 최근 3연속 불발(MISSED) 경고 — SCHEDULE 콜만, CONSENT 제외.
+  // sessions 는 getCallSessions()가 scheduled_at 내림차순 반환하나, 판정 함수가 재정렬하므로 그대로 그룹핑.
+  const sessionsBySenior = new Map<string, typeof sessions>();
+  for (const s of sessions) {
+    const arr = sessionsBySenior.get(s.senior_id) ?? [];
+    arr.push(s);
+    sessionsBySenior.set(s.senior_id, arr);
+  }
 
   // 피보호자별 활성 일정 수 — 카드 프로필 헤더에 표시.
   const activeScheduleCount = new Map<string, number>();
@@ -177,15 +187,37 @@ export default async function DashboardPage() {
           </Link>
         </div>
         <div className="flex flex-col gap-4">
-          {seniors.map((s, i) => (
-            <SeniorTodoCard
-              key={s.id}
-              senior={s}
-              activeCount={activeScheduleCount.get(s.id) ?? 0}
-              todos={todosBySenior.get(s.id) ?? []}
-              colorIndex={i % 3}
-            />
-          ))}
+          {seniors.map((s, i) => {
+            const missedAlert = hasThreeConsecutiveMissed(
+              sessionsBySenior.get(s.id) ?? [],
+            );
+            return (
+              <div key={s.id} className="flex flex-col gap-2">
+                {missedAlert ? (
+                  <div
+                    role="alert"
+                    className="flex items-start gap-2 rounded-base bg-accent/10 px-4 py-3 text-sm text-accent"
+                  >
+                    <AlertTriangle
+                      className="mt-0.5 h-4 w-4 shrink-0"
+                      aria-hidden
+                      strokeWidth={2}
+                    />
+                    <p className="break-keep leading-relaxed">
+                      최근 3회 연속 전화를 받지 못하셨어요. 직접 안부를 확인해 보시는
+                      걸 권해드려요.
+                    </p>
+                  </div>
+                ) : null}
+                <SeniorTodoCard
+                  senior={s}
+                  activeCount={activeScheduleCount.get(s.id) ?? 0}
+                  todos={todosBySenior.get(s.id) ?? []}
+                  colorIndex={i % 3}
+                />
+              </div>
+            );
+          })}
         </div>
       </section>
 

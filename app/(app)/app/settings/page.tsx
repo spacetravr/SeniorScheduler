@@ -10,10 +10,12 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
-import { NotifyToggle } from "@/components/app/NotifyToggle";
+import { NotifySettingsForm } from "@/components/app/NotifySettingsForm";
 import { LogoutButton } from "@/components/app/LogoutButton";
 import { PasswordChangeForm } from "@/components/app/PasswordChangeForm";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { getNotifySettings } from "@/lib/actions/settings";
+import { DEFAULT_NOTIFY_SETTINGS } from "@/lib/contracts/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,10 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
   const email = user?.email ?? "-";
+
+  // 저장된 알림 설정 조회 — 실패 시 기본값으로 강등(페이지는 항상 렌더).
+  const notifyRes = await getNotifySettings();
+  const notifySettings = notifyRes.ok ? notifyRes.settings : DEFAULT_NOTIFY_SETTINGS;
 
   return (
     <div className="flex flex-col gap-8">
@@ -106,12 +112,7 @@ export default async function SettingsPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold">알림</h2>
-        <NotifyToggle label="통화 완료 시 결과 알림" initial={true} />
-        <NotifyToggle label="불발(무응답) 발생 시 알림" initial={true} />
-        <NotifyToggle label="주간 이행률 요약 알림" initial={false} />
-        <p className="text-xs text-text-muted">
-          알림 채널 연동은 준비 중입니다. (설정값은 아직 저장되지 않습니다)
-        </p>
+        <NotifySettingsForm initial={notifySettings} />
       </section>
 
       <section className="flex flex-col gap-3">

@@ -1,26 +1,41 @@
 "use client";
 
-/** 알림 설정 placeholder 토글 (mock) — 로컬 상태만. 색은 토큰만 사용. */
-import { useState } from "react";
-
+/**
+ * 알림 설정 토글 (프레젠테이션 전용, 제어 컴포넌트).
+ * 저장 상태·값은 상위 NotifySettingsForm 이 관리하고, 여기선 표시만 한다.
+ * 색·라운드는 토큰 클래스만 사용.
+ */
 export function NotifyToggle({
   label,
-  initial,
+  description,
+  on,
+  disabled = false,
+  onToggle,
 }: {
   label: string;
-  initial: boolean;
+  description?: string;
+  on: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
 }) {
-  const [on, setOn] = useState(initial);
   return (
     <div className="flex items-center justify-between gap-4 rounded-base border border-border bg-bg p-4 shadow-card">
-      <span className="text-sm font-medium">{label}</span>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="text-sm font-medium">{label}</span>
+        {description ? (
+          <span className="break-keep text-xs leading-relaxed text-text-muted">
+            {description}
+          </span>
+        ) : null}
+      </div>
       <button
         type="button"
         role="switch"
         aria-checked={on}
         aria-label={label}
-        onClick={() => setOn((v) => !v)}
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+        disabled={disabled}
+        onClick={onToggle}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
           on ? "bg-primary" : "bg-text-muted"
         }`}
       >
