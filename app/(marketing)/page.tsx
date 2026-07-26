@@ -5,10 +5,12 @@
  * 브랜드: Senior Scheduler.
  */
 import Image from "next/image";
-import Link from "next/link";
 import { PreregisterButton } from "@/components/marketing/PreregisterButton";
 import { FaqSection } from "@/components/marketing/FaqSection";
 import { FAQ_ITEMS } from "@/components/marketing/faqData";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { ReportPreviewCard } from "@/components/marketing/ReportPreviewCard";
 
 /** FAQPage 구조화 데이터(JSON-LD). 화면 FAQ와 동일한 FAQ_ITEMS 단일 소스에서 생성. */
 const faqJsonLd = {
@@ -73,22 +75,7 @@ export default function LandingPage() {
       />
 
       {/* 헤더 */}
-      <header className="sticky top-0 z-30 border-b border-border bg-bg/85 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3.5 sm:px-8">
-          <span className="font-brand text-lg font-bold tracking-tight sm:text-xl">
-            Senior Scheduler
-          </span>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/login"
-              className="text-sm font-medium text-text-muted transition-colors hover:text-primary"
-            >
-              로그인
-            </Link>
-            <PreregisterButton size="sm" />
-          </div>
-        </div>
-      </header>
+      <SiteHeader cta={<PreregisterButton size="sm" />} />
 
       <main className="flex flex-col">
         {/* 히어로 */}
@@ -252,97 +239,7 @@ export default function LandingPage() {
       </main>
 
       {/* 푸터 */}
-      <footer className="border-t border-border bg-surface">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-5 py-10 text-center text-sm text-text-muted sm:px-8">
-          <span className="text-base font-bold text-text">Senior Scheduler</span>
-          <p>정식 출시를 준비 중인 베타 서비스입니다.</p>
-          <p className="text-xs">
-            본 서비스는 의료 조언을 제공하지 않으며, 안부·일정 안내를 돕는
-            도구입니다.
-          </p>
-        </div>
-      </footer>
-    </div>
-  );
-}
-
-/** 앱 리포트 화면처럼 보이는 예시 카드 (정적 목업). */
-function ReportPreviewCard() {
-  return (
-    <div className="overflow-hidden rounded-base border border-border bg-bg shadow-card">
-      {/* 상단 헤더: 날짜·시간 + 상태 칩 */}
-      <div className="flex items-center justify-between gap-3 border-b border-border p-5">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs text-text-muted">
-            7월 12일 (일) · 오전 9:00
-          </span>
-          <span className="font-bold">어머님 안부 전화</span>
-        </div>
-        <span className="inline-flex shrink-0 items-center rounded-base bg-primary px-2.5 py-1 text-xs font-semibold leading-none text-bg">
-          복약 완료
-        </span>
-      </div>
-
-      {/* 통화 요약 */}
-      <div className="flex flex-col gap-4 p-5">
-        <div className="flex flex-col gap-2 rounded-base bg-surface p-4">
-          <span className="text-xs font-semibold text-primary">통화 요약</span>
-          <p className="text-sm leading-relaxed text-text">
-            오전 9시에 통화했어요. 혈압약을 방금 챙겨 드셨다고 하셨고, 오늘은
-            경로당에 다녀오실 예정이라고 하셨어요.
-          </p>
-        </div>
-
-        {/* 기분 / 건강 표시 */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex items-center gap-2 rounded-base bg-surface p-3">
-            <span className="text-lg" aria-hidden>
-              🙂
-            </span>
-            <div className="flex flex-col">
-              <span className="text-xs text-text-muted">기분</span>
-              <span className="text-sm font-semibold">좋음</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 rounded-base bg-surface p-3">
-            <span className="text-lg" aria-hidden>
-              💗
-            </span>
-            <div className="flex flex-col">
-              <span className="text-xs text-text-muted">건강</span>
-              <span className="text-sm font-semibold">특이사항 없음</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 대화 전사 스니펫 */}
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-semibold text-text-muted">
-            대화 내용 · 그대로 읽어 보실 수 있어요
-          </span>
-          <div className="flex flex-col gap-3 rounded-base bg-surface p-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-text-muted">안내</span>
-              <p className="w-fit rounded-base bg-bg px-3 py-2 text-sm leading-relaxed text-text">
-                어머님, 오늘 아침 혈압약은 드셨어요?
-              </p>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <span className="text-xs font-semibold text-text-muted">
-                어머님
-              </span>
-              <p className="w-fit rounded-base bg-primary px-3 py-2 text-sm leading-relaxed text-bg">
-                응, 방금 물이랑 같이 먹었어.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 예시 라벨 */}
-      <div className="border-t border-border px-5 py-3">
-        <span className="text-xs text-text-muted">예시 화면입니다</span>
-      </div>
+      <SiteFooter />
     </div>
   );
 }
