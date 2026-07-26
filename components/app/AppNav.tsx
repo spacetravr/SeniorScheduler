@@ -44,17 +44,20 @@ export function BrandWordmark({ className = "" }: { className?: string }) {
   );
 }
 
-/** 모바일 상단 브랜드 헤더 (데스크톱은 사이드바가 브랜드 표기 담당). */
-export function MobileHeader() {
+/**
+ * 모바일 상단 브랜드 헤더 (데스크톱은 사이드바가 브랜드 표기 담당).
+ * credits 는 서버 레이아웃에서 getMyCredits()로 조회해 내려준다(없으면 null).
+ */
+export function MobileHeader({ credits }: { credits: number | null }) {
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-bg/85 px-5 py-3 backdrop-blur md:hidden">
       <BrandWordmark className="text-lg" />
-      <CreditBadgeCompact />
+      <CreditBadgeCompact credits={credits} />
     </header>
   );
 }
 
-export function DesktopSidebar() {
+export function DesktopSidebar({ credits }: { credits: number | null }) {
   const pathname = usePathname();
   return (
     <aside className="hidden w-56 shrink-0 flex-col gap-1 border-r border-border p-4 md:flex">
@@ -77,7 +80,7 @@ export function DesktopSidebar() {
       })}
       {/* 사이드바 하단: 잔여 크레딧 → 결제 페이지 진입 */}
       <div className="mt-auto pt-4">
-        <CreditBadge />
+        <CreditBadge credits={credits} />
       </div>
     </aside>
   );

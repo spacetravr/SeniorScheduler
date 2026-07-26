@@ -1,8 +1,6 @@
-"use client";
-
 /**
- * 크레딧·결제 (/app/billing) — mock (실결제 연동 없음).
- * - 잔여 크레딧 카드(mock 상수)
+ * 크레딧·결제 (/app/billing) — 실결제 연동 없음(베타).
+ * - 잔여 크레딧 카드(getMyCredits() 실데이터, 실패 시 "-"로 강등)
  * - 무료(ARS 안내) / 유료(양방향 AI 대화, 준비 중) 플랜 안내 2열
  * - 크레딧 충전 품목 3종 (가격은 설문 측정 중 → 숫자 하드코딩 금지, "출시 시 공개")
  * - 결제 버튼은 클릭 시 안내만. 하단 베타 무료 고지.
@@ -10,7 +8,8 @@
  */
 import { Coins, Phone, MessagesSquare, Check } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
-import { MOCK_CREDITS } from "@/components/app/CreditBadge";
+import { ChargeButton } from "@/components/app/ChargeButton";
+import { getMyCredits } from "@/lib/actions/credits";
 
 // TODO: credits 상품 테이블 연동 전 mock. 가격은 설문으로 측정 중 → 표기 보류.
 const CHARGE_ITEMS = [
@@ -19,10 +18,13 @@ const CHARGE_ITEMS = [
   { amount: 1000, note: "넉넉하게" },
 ] as const;
 
-export default function BillingPage() {
-  function handleCharge() {
-    // 실결제 미연동 — 안내만 (베타)
-    alert("결제는 곧 오픈됩니다. 베타 기간에는 무료로 이용하실 수 있어요.");
+export default async function BillingPage() {
+  // 잔여 크레딧 실데이터. 조회 실패 시 null → "-"로 안전 강등(크래시 금지).
+  let credits: number | null = null;
+  try {
+    credits = (await getMyCredits()).balance;
+  } catch {
+    credits = null;
   }
 
   return (
@@ -43,11 +45,15 @@ export default function BillingPage() {
         <div className="flex flex-col gap-0.5">
           <span className="text-sm text-text-muted">잔여 크레딧</span>
           <span className="text-3xl font-bold text-primary tabular-nums">
-            {MOCK_CREDITS.toLocaleString("ko-KR")}
+            {credits == null ? "-" : credits.toLocaleString("ko-KR")}
             <span className="ml-1 text-base font-semibold text-text-muted">
               크레딧
             </span>
           </span>
+          <p className="break-keep text-xs leading-relaxed text-text-muted">
+            통화 1건이 완료될 때마다 1크레딧이 사용됩니다. 베타 기간에는 잔액과
+            무관하게 무료로 이용하실 수 있어요.
+          </p>
         </div>
       </section>
 
@@ -126,13 +132,7 @@ export default function BillingPage() {
               <span className="break-keep text-sm font-semibold text-text-muted">
                 가격 출시 시 공개
               </span>
-              <button
-                type="button"
-                onClick={handleCharge}
-                className="mt-1 rounded-base bg-primary px-4 py-2.5 text-sm font-semibold text-bg transition-colors hover:opacity-90"
-              >
-                결제하기
-              </button>
+              <ChargeButton />
             </div>
           ))}
         </div>
