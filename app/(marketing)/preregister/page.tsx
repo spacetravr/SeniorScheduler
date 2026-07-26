@@ -9,10 +9,35 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { PreregisterForm } from "@/components/marketing/PreregisterForm";
 
+const PREREGISTER_TITLE = "사전등록";
+const PREREGISTER_DESCRIPTION =
+  "부모님 복약·안부 전화 서비스 Senior Scheduler, 이메일로 사전등록하시면 정식 출시 소식과 우선 혜택을 가장 먼저 안내드립니다.";
+const OG_IMAGE = "/images/senior-man-phone.jpg";
+
 export const metadata: Metadata = {
-  title: "사전등록 · Senior Scheduler",
-  description:
-    "이메일로 사전등록하시면 Senior Scheduler 정식 출시 소식을 가장 먼저 안내드립니다.",
+  title: PREREGISTER_TITLE,
+  description: PREREGISTER_DESCRIPTION,
+  alternates: { canonical: "/preregister" },
+  openGraph: {
+    title: `${PREREGISTER_TITLE} | Senior Scheduler`,
+    description: PREREGISTER_DESCRIPTION,
+    type: "website",
+    locale: "ko_KR",
+    siteName: "Senior Scheduler",
+    url: "/preregister",
+    images: [
+      {
+        url: OG_IMAGE,
+        alt: "편안하게 전화를 보고 계신 아버님",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${PREREGISTER_TITLE} | Senior Scheduler`,
+    description: PREREGISTER_DESCRIPTION,
+    images: [OG_IMAGE],
+  },
 };
 
 const BENEFITS = [
