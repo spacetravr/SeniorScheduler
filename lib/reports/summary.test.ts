@@ -3,7 +3,7 @@ import {
   periodLabel,
   buildReportSummary,
   type ReportItem,
-} from "./reportSummary";
+} from "./summary";
 
 function item(over: Partial<ReportItem> & Pick<ReportItem, "createdAt">): ReportItem {
   return {
