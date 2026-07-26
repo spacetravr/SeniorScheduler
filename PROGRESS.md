@@ -6,7 +6,10 @@
 
 ---
 
-## 세션 #11 (2026-07-26) — 통화 외 4트랙 일괄 (랜딩·이메일·UX·크레딧, 2웨이브 5레인 병렬)
+## 세션 #11 (2026-07-26) — 통화 외 4트랙 일괄 (랜딩·이메일·UX·크레딧, 2웨이브 5레인 병렬) + 홈페이지·SNS 자산
+
+### 현재 상태 한 줄
+**main(d98516f) = 앱 4트랙+홈페이지 4페이지+SNS 자산 전부 머지·push, 테스트 362/362, 0008·0009 적용 확인. ⚠️ 프로덕션 미배포(사용자 승인 대기) — SNS 게시·설문 재배포 전에 반드시 먼저 배포할 것(새 FAQ/약관/소개 페이지·앱 개선이 아직 프로덕션에 없음). Resend 키 미등록(주간 메일은 배포+키 등록 후 활성).**
 
 ### 완료 (전부 reviewer PASS 후 main 머지, 최종 테스트 **362/362**. ⚠️ 프로덕션 미배포 — 사용자 승인 대기)
 - **랜딩 개선** (feat/ui-landing-faq-seo → 4da7a28): FAQ 7문답 아코디언(components/marketing/FaqSection.tsx+faqData.ts 단일 소스, FAQPage JSON-LD) / 루트·preregister metadata 보강(키워드·OG·twitter·canonical) / app/sitemap.ts·robots.ts 신설(/app·/admin disallow) / 히어로 서브카피 Status Quo 프레이밍("매일 전화로 '약 드셨어요?' 확인하기, 언제까지…"). CTA 추적 무변경
