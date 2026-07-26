@@ -356,14 +356,16 @@ function WeekView({ rows }: { rows: Row[] }) {
       {weeks.map(({ start, items }) => {
         const end = addDaysYmd(start, 6);
         const done = items.filter((i) => i.status === "DONE").length;
-        // 요일별 미니 표시(월~일)
+        // 요일별 미니 막대(월~일) — 요일별 이행률(DONE/전체) 표현. 집계 로직은 기존과 동일(DONE 카운트).
         const dayCells = Array.from({ length: 7 }, (_, idx) => {
           const dayYmd = addDaysYmd(start, idx);
           const dayItems = items.filter((i) => kstYmd(i.createdAt) === dayYmd);
+          const dayDone = dayItems.filter((i) => i.status === "DONE").length;
+          const label = WEEKDAY_KO[(idx + 1) % 7];
           return {
-            label: WEEKDAY_KO[(idx + 1) % 7],
+            label,
             hasReport: dayItems.length > 0,
-            done: dayItems.some((i) => i.status === "DONE"),
+            rate: rate(dayDone, dayItems.length),
           };
         });
         return (
@@ -385,19 +387,24 @@ function WeekView({ rows }: { rows: Row[] }) {
               </p>
             </div>
 
-            <div className="flex justify-between gap-2">
+            {/* 요일별 이행률 미니 막대 차트 (월~일) — 순수 CSS 높이, 색은 primary 토큰. */}
+            <div className="flex items-end justify-between gap-2">
               {dayCells.map((d, i) => (
                 <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
-                  <span
-                    className={`flex h-9 w-full items-center justify-center rounded-base text-xs font-semibold ${
-                      d.done
-                        ? "bg-primary text-bg"
-                        : "bg-surface text-text-muted"
-                    }`}
-                    aria-label={!d.hasReport ? "기록 없음" : d.done ? "이행" : "미이행"}
-                  >
-                    {d.hasReport ? (d.done ? "○" : "–") : ""}
-                  </span>
+                  <div className="flex h-16 w-full items-end justify-center">
+                    <div
+                      role="img"
+                      aria-label={
+                        d.hasReport
+                          ? `${d.label}요일 이행률 ${d.rate}%`
+                          : `${d.label}요일 기록 없음`
+                      }
+                      className={`w-full max-w-[1.75rem] rounded-base transition-all ${
+                        d.hasReport ? "bg-primary" : "bg-primary/15"
+                      }`}
+                      style={{ height: `${d.hasReport ? Math.max(d.rate, 6) : 6}%` }}
+                    />
+                  </div>
                   <span className="text-xs text-text-muted">{d.label}</span>
                 </div>
               ))}
