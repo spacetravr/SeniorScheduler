@@ -139,6 +139,7 @@ function ShareSummary({
   onClose: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   const text = useMemo(() => buildReportSummary(view, items), [view, items]);
   const period = useMemo(
@@ -151,12 +152,16 @@ function ShareSummary({
   )}&body=${encodeURIComponent(text)}`;
 
   async function copy() {
+    // 비보안 컨텍스트·미지원·권한 거부 시 clipboard API가 없거나 reject됨 → 수동 복사 안내로 폴백.
     try {
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
       await navigator.clipboard.writeText(text);
       setCopied(true);
+      setCopyFailed(false);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
+      setCopyFailed(true);
     }
   }
 
@@ -184,9 +189,23 @@ function ShareSummary({
           </button>
         </div>
 
-        <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-keep rounded-base bg-surface p-4 text-sm leading-relaxed text-text [font-family:var(--font-sans)]">
+        <pre
+          className={`max-h-56 select-text overflow-auto whitespace-pre-wrap break-keep rounded-base p-4 text-sm leading-relaxed text-text [font-family:var(--font-sans)] [-webkit-user-select:text] ${
+            copyFailed ? "bg-primary-soft ring-2 ring-primary" : "bg-surface"
+          }`}
+        >
           {text}
         </pre>
+
+        {copyFailed && (
+          <p
+            role="alert"
+            className="break-keep rounded-base bg-accent/10 px-3 py-2 text-sm leading-relaxed text-accent"
+          >
+            복사에 실패했어요. 위 요약 내용을 길게 눌러(또는 드래그해) 직접 복사해
+            주세요.
+          </p>
+        )}
 
         <div className="flex gap-2">
           <a
