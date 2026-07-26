@@ -6,11 +6,19 @@
 import Link from "next/link";
 import { Coins } from "lucide-react";
 
-// TODO: credits 테이블 연동 전 mock (Phase 2에서 실데이터로 교체)
-export const MOCK_CREDITS = 120;
+/**
+ * credits 는 서버(레이아웃/페이지)에서 getMyCredits()로 조회해 내려준다.
+ * 조회 실패/미로그인 등으로 값이 없으면 null → "-"로 안전 강등(크래시 금지).
+ */
+type CreditProp = { credits: number | null };
+
+/** 표시용 숫자 포맷 — 값 없으면 "-". */
+function formatCredits(credits: number | null): string {
+  return credits == null ? "-" : credits.toLocaleString("ko-KR");
+}
 
 /** 사이드바 하단용 — 아이콘 + "120 크레딧" + 라벨. */
-export function CreditBadge({ credits = MOCK_CREDITS }: { credits?: number }) {
+export function CreditBadge({ credits }: CreditProp) {
   return (
     <Link
       href="/app/billing"
@@ -25,7 +33,7 @@ export function CreditBadge({ credits = MOCK_CREDITS }: { credits?: number }) {
       <span className="flex min-w-0 flex-col leading-tight">
         <span className="break-keep text-xs text-text-muted">잔여 크레딧</span>
         <span className="font-semibold text-text tabular-nums">
-          {credits.toLocaleString("ko-KR")} 크레딧
+          {formatCredits(credits)} 크레딧
         </span>
       </span>
     </Link>
@@ -33,15 +41,15 @@ export function CreditBadge({ credits = MOCK_CREDITS }: { credits?: number }) {
 }
 
 /** 모바일 헤더 우측용 컴팩트 배지 — 아이콘 + 숫자만. */
-export function CreditBadgeCompact({ credits = MOCK_CREDITS }: { credits?: number }) {
+export function CreditBadgeCompact({ credits }: CreditProp) {
   return (
     <Link
       href="/app/billing"
-      aria-label={`잔여 크레딧 ${credits}`}
+      aria-label={`잔여 크레딧 ${formatCredits(credits)}`}
       className="flex items-center gap-1.5 rounded-base border border-border bg-bg px-2.5 py-1.5 text-sm font-semibold text-primary shadow-card transition-colors hover:border-primary"
     >
       <Coins className="h-4 w-4 shrink-0" aria-hidden strokeWidth={2} />
-      <span className="tabular-nums">{credits.toLocaleString("ko-KR")}</span>
+      <span className="tabular-nums">{formatCredits(credits)}</span>
     </Link>
   );
 }
