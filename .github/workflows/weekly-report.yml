@@ -1,0 +1,29 @@
+name: weekly-report
+
+# 주간 통화 리포트 요약 메일 발송 트리거 (매주 1회).
+# notify_weekly_summary=true 인 보호자에게 지난 7일 요약을 /api/cron/weekly-report 가 발송한다.
+# RESEND_API_KEY 미설정 시 라우트가 발송을 skip 하므로 활성 상태로 둬도 무해.
+# 발신 실패해도 워크플로는 성공 종료(다음 주 재시도).
+
+on:
+  schedule:
+    # 매주 월요일 09:00 KST 발송 → UTC 로는 -9h = 월요일 00:00 (CLAUDE.md 시간대 규칙: cron 은 UTC 해석)
+    - cron: "0 0 * * 1"
+  workflow_dispatch: # 수동 트리거
+
+jobs:
+  weekly-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger weekly report
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          code=$(curl -s -o /tmp/out.json -w "%{http_code}" --max-time 60 \
+            -X POST "https://seniorscheduler.vercel.app/api/cron/weekly-report" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          echo "HTTP $code"
+          cat /tmp/out.json || true
+          if [ "$code" != "200" ]; then
+            echo "::warning::weekly-report returned HTTP $code (다음 주에 재시도)"
+          fi
