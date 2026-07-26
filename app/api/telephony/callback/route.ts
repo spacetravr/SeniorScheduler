@@ -24,7 +24,9 @@ import {
   type CallbackStore,
   type CallbackSessionRow,
   type SessionPatch,
+  type CallbackResult,
 } from "@/lib/telephony/callback-handler";
+import { deductForCall } from "@/lib/credits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -152,6 +154,27 @@ function createSupabaseStore(supabase: SupabaseClient = getAdminClient()): Callb
   };
 }
 
+/**
+ * 콜백으로 통화가 COMPLETE 확정된 경우 크레딧 차감(표시용). 갱신된 세션(status=COMPLETED)을
+ * 다시 읽어 deductForCall 에 넘긴다(SCHEDULE·COMPLETED 만 -1, CONSENT 무차감, 멱등·실패 무해).
+ * mock(sync) 경로는 dispatch 라우트가 동일 처리 — 두 경로 모두 커버.
+ */
+async function deductIfCompleted(
+  store: CallbackStore,
+  sessionId: string,
+  result: CallbackResult,
+): Promise<void> {
+  if (result.status !== "ok" || result.action !== "COMPLETE") return;
+  const session = await store.getSession(sessionId);
+  if (!session) return;
+  await deductForCall({
+    id: session.id,
+    purpose: session.purpose,
+    status: session.status,
+    senior_id: session.senior_id,
+  });
+}
+
 export async function POST(req: Request) {
   const secret = process.env.TELEPHONY_CALLBACK_SECRET;
   if (!secret) {
@@ -189,8 +212,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "parser_unavailable" }, { status: 501 });
   }
 
+  const store = createSupabaseStore();
   const result = await processCallback(payload, {
-    store: createSupabaseStore(),
+    store,
     llm: createLlmClient(),
     now: new Date(),
   });
@@ -198,6 +222,7 @@ export async function POST(req: Request) {
   if (result.status === "not_found") {
     return NextResponse.json({ error: "session_not_found" }, { status: 404 });
   }
+  await deductIfCompleted(store, payload.session_id, result);
   // ignored(멱등)·ok 모두 200 — 벤더 재전송을 유발하지 않도록 성공 응답.
   return NextResponse.json(result, { status: 200 });
 }
@@ -314,5 +339,6 @@ async function handleClawops(req: Request, secret: string): Promise<NextResponse
   if (result.status === "not_found") {
     return NextResponse.json({ error: "session_not_found" }, { status: 404 });
   }
+  await deductIfCompleted(store, sessionId, result);
   return NextResponse.json(result, { status: 200 });
 }
