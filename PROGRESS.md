@@ -6,6 +6,28 @@
 
 ---
 
+## 세션 #11 (2026-07-26) — 통화 외 4트랙 일괄 (랜딩·이메일·UX·크레딧, 2웨이브 5레인 병렬)
+
+### 완료 (전부 reviewer PASS 후 main 머지, 최종 테스트 **362/362**. ⚠️ 프로덕션 미배포 — 사용자 승인 대기)
+- **랜딩 개선** (feat/ui-landing-faq-seo → 4da7a28): FAQ 7문답 아코디언(components/marketing/FaqSection.tsx+faqData.ts 단일 소스, FAQPage JSON-LD) / 루트·preregister metadata 보강(키워드·OG·twitter·canonical) / app/sitemap.ts·robots.ts 신설(/app·/admin disallow) / 히어로 서브카피 Status Quo 프레이밍("매일 전화로 '약 드셨어요?' 확인하기, 언제까지…"). CTA 추적 무변경
+- **리포트 이메일 자동 발송 백엔드** (feat/data-email-settings → bb757f2): lib/email/(EmailAdapter+ResendAdapter fetch 직접·의존성 0, 키 없으면 skip 폴백) / 0008 마이그레이션(guardians notify 3컬럼) / lib/contracts/settings.ts+lib/actions/settings.ts / reportSummary 순수 함수 lib/reports/summary.ts 이관(components에 1줄 재수출 심 — 승인된 경계 예외) / lib/reports/weekly.ts(KST 완전 7일 반개구간) / app/api/cron/weekly-report(Bearer CRON_SECRET, PII 무로그, 의료 고지 부착) / weekly-report.yml(월 09:00 KST=UTC `0 0 * * 1`, 기존 CRON_SECRET 시크릿 재사용)
+- **앱 UX 묶음** (feat/ui-ux-polish → bfa4113): 요약 보내기 모달 클립보드 실패 시 role=alert 안내+수동 복사 강조(성공 경로·mailto 무변경) / components/app/Skeleton.tsx+앱 8개 라우트 loading.tsx 스켈레톤(시드니 DB 지연 체감 개선)
+- **설정·차트·배너** (feat/ui-settings-chart-banner → baf61a1): 알림 토글 3종 실저장(NotifySettingsForm 낙관적+실패 롤백, "저장 안 됨" 문구 제거, 주간 요약 토글=이메일 발송 대상 연결) / 리포트 주별 뷰 요일별 이행률 순수 CSS 막대(aria-label) / 대시보드 3연속 MISSED 경고 배너(missedStreak.ts 순수 함수+테스트 6, SCHEDULE만·최신 3건)
+- **크레딧 실데이터화** (feat/data-credits → 80471c2 + feat/ui-credits-live → 머지): 0009 credit_ledger(부분 unique 2종=차감·가입보너스 멱등, RLS select만·write 서버 전용) / 가입 120(CREDIT_SIGNUP_GRANT, 첫 조회 시 지연 적립) / SCHEDULE+COMPLETED당 -1(CONSENT·MISSED 무차감, 실패 throw 금지) / 차감 hook 2지점(dispatch mock 경로·콜백 COMPLETE) / **발신 차단 없음(베타 무료 정책)** / UI: MOCK_CREDITS 제거, layout 1회 getMyCredits()→배지·billing 실잔액(실패 시 "-")
+
+### 결정사항
+- 이메일 벤더 = **Resend, fetch 직접 호출(신규 npm 의존성 0)**. 키 없으면 조용히 skip이라 머지·배포 무해. 발신자 기본 onboarding@resend.dev(테스트용) — 실서비스는 도메인 인증 후 RESEND_FROM 교체
+- 크레딧 정책 = 표시용(가입 120, 완료 콜당 1). 잔액 차단·실결제 없음, 가격 숫자 미표기 유지
+- ui 에이전트 커밋 누락 사고 1건(feat/ui-settings-chart-banner) → 오케스트레이터가 reviewer 검증본 그대로 커밋해 수습. **교훈: ui/data 에이전트 지시문에 "git commit까지 완료+해시 보고" 명시할 것** (이후 태스크부터 반영됨)
+
+### 다음 할 일 / 사용자 액션
+1. **[사용자] 0008+0009 마이그레이션 실행** — supabase/migrations/0008_notify_settings.sql, 0009_credit_ledger.sql을 SQL Editor에서 순서대로 실행(둘 다 멱등). 미실행이어도 앱은 안전 강등(설정 저장 실패 안내·크레딧 "-" 표시·차감 로그 후 통과)이지만 **배포 전 실행 권장**
+2. **[사용자] Resend**: 가입 → API 키 → Vercel env `RESEND_API_KEY`(+선택 `RESEND_FROM`) 등록 시 주간 요약 실발송 시작. 없으면 크론이 skip(무해)
+3. **배포**: 사용자 "배포해줘" 시 /ship (이번 세션 분량 전체)
+4. 후속(reviewer 논블로킹): app/(app)/layout.tsx의 크레딧 조회가 페이지 전환 TTFB에 직렬 — Suspense 분리 검토 / 대시보드 배너용 getCallSessions 페이지네이션 도입 시 판정 주의 / 워크트리 중첩 ESLint 경고(기존 이슈 지속)
+
+---
+
 ## 세션 #10 (2026-07-17) — 리포트·통화·설정 탭 개선 (사용자 피드백 4건, ui 2레인 병렬)
 
 ### ✅ 프로덕션 배포 완료 (2026-07-17, 사용자 "배포해줘")
