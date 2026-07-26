@@ -6,6 +6,7 @@ import { instanceOnKstDate, kstDateOf } from "@/lib/scheduling/occurrences";
 import { canDispatchScheduleCall, canDispatchConsentCall } from "@/lib/calls/state-machine";
 import { isConsentSessionDue } from "@/lib/calls/consent-scheduling";
 import { runScheduleCall, runConsentCall, classifyAndReportSchedule } from "@/lib/calls/run-call";
+import { deductForCall } from "@/lib/credits";
 import { createLlmClient } from "@/lib/ai/llm";
 import { selectTelephony, getConfiguredProvider, resolveClawOpsConfig } from "@/lib/telephony/provider";
 import { TelephonyNotConfiguredError, type TelephonyAdapter } from "@/lib/telephony/types";
@@ -375,6 +376,15 @@ export async function POST(req: Request) {
         cost_krw: result.costKrw,
       })
       .eq("id", sessionId);
+
+    // 크레딧 차감(표시용 — COMPLETED 된 SCHEDULE 콜만 -1, 멱등·실패 무해). 콜백 경로는 콜백
+    // 라우트가 동일 처리.
+    await deductForCall({
+      id: sessionId,
+      purpose: "SCHEDULE",
+      status: result.status,
+      senior_id: senior.id,
+    });
 
     if (result.turns.length > 0) {
       await supabase.from("call_turns").insert(
