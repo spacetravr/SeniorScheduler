@@ -103,6 +103,24 @@ describe("buildDigest", () => {
     expect(d.seniors[0].items[0].time).toBe("23:30");
   });
 
+  it("subline 의 예외 내역 합이 headline 의 건수와 일치한다 (종류 누락 금지)", () => {
+    const d = buildDigest("DAY", [
+      item({ id: "1", status: "NOT_DONE" }),
+      item({ id: "2", status: "MISSED" }),
+      item({ id: "3", status: "UNCERTAIN" }),
+      item({ id: "4", status: "DONE" }),
+    ]);
+    expect(d.headline).toBe("확인이 필요한 일이 3건 있어요");
+    expect(d.subline).toContain("미이행 1건");
+    expect(d.subline).toContain("부재 1건");
+    expect(d.subline).toContain("확인 필요 1건");
+
+    const sum = ["미이행", "부재", "확인 필요"]
+      .map((label) => Number(new RegExp(`${label} (\\d+)건`).exec(d.subline)?.[1] ?? 0))
+      .reduce((a, b) => a + b, 0);
+    expect(sum).toBe(d.stats.exception);
+  });
+
   it("추이는 일자별 이행률(통화 없는 날 제외)을 오래된→최신 순으로 낸다", () => {
     const d = buildDigest("WEEK", [
       item({ id: "1", createdAt: "2026-07-27T09:00:00+09:00", status: "DONE" }),

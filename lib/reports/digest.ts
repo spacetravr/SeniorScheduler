@@ -97,6 +97,9 @@ function sublineOf(stats: DigestStats): string {
   if (stats.total === 0) return "";
   const parts = [`통화 ${stats.total}건`];
   if (stats.adherenceRate !== null) parts.push(`이행 ${stats.done}건 (${stats.adherenceRate}%)`);
+  // 예외는 종류별로 **빠짐없이** 적는다 — headline 의 "N건"과 내역 합이 어긋나면
+  // 리포트 자체의 신뢰가 깨진다(미이행 누락 버그 2026-07-28).
+  if (stats.notDone > 0) parts.push(`미이행 ${stats.notDone}건`);
   if (stats.missed > 0) parts.push(`부재 ${stats.missed}건`);
   if (stats.uncertain > 0) parts.push(`확인 필요 ${stats.uncertain}건`);
   return parts.join(" · ");

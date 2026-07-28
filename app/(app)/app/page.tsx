@@ -157,8 +157,12 @@ export default async function DashboardPage() {
   }
   const weekReports = weekDays.flatMap((ymd) => reportsByDay.get(ymd) ?? []);
   const weekDone = weekReports.filter((r) => r.adherence_status === "DONE").length;
+  // 이행률 분모는 **통화가 성사된 건**만 — 부재(MISSED)는 이행 실패가 아니므로 이행률을 깎지 않는다.
+  // buildDigest(lib/reports/digest.ts)의 adherenceRate 와 같은 규칙을 쓴다(화면 간 수치 불일치 방지).
+  const weekAnswered = weekReports.filter((r) => r.adherence_status !== "MISSED").length;
   const weekTotal = weekReports.length;
-  const weekRate = weekTotal > 0 ? Math.round((weekDone / weekTotal) * 100) : 0;
+  // 성사된 통화가 0건이면 이행률은 "없음"이다. 0% 로 표시하면 "다 실패했다"로 읽힌다.
+  const weekRate = weekAnswered > 0 ? Math.round((weekDone / weekAnswered) * 100) : null;
   const byDay = weekDays.map((ymd) => {
     const dayReports = reportsByDay.get(ymd) ?? [];
     return {
@@ -291,12 +295,14 @@ export default async function DashboardPage() {
       <section className="rounded-base bg-surface p-5">
         <div className="mb-4 flex items-baseline justify-between">
           <h2 className="text-base font-semibold">이번 주 이행률</h2>
-          {hasReports ? (
+          {weekRate !== null ? (
             <p className="text-sm text-text-muted">
               <span className="text-2xl font-bold text-primary">{weekRate}%</span>{" "}
-              ({weekDone}/{weekTotal}건)
+              ({weekDone}/{weekAnswered}건)
             </p>
-          ) : null}
+          ) : (
+            <p className="text-sm text-text-muted">이번 주 기록 없음</p>
+          )}
         </div>
         {hasReports ? (
           <div className="flex justify-between gap-2">
