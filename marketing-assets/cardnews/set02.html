@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>시니어 스케줄러 카드뉴스 Set 02 — 리포트가 이렇게 옵니다</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+  /* 브랜드 토큰 — app/globals.css 와 동일 값. 이 파일 안에서는 이 변수만 사용한다. */
+  :root{
+    --navy:#1E3A5F; --navy-soft:#EAF0F7; --terra:#C2410B;
+    --cream:#FBF7F0; --beige:#F0E7D8; --border:#E7DBC8;
+    --ink:#263140; --taupe:#6B5D4F;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:#9A9691;
+    font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;
+    word-break:keep-all;
+    -webkit-font-smoothing:antialiased;
+  }
+  .card{
+    width:1080px;height:1080px;position:relative;overflow:hidden;
+    display:flex;flex-direction:column;
+    padding:120px 110px 110px;margin:28px auto;
+    letter-spacing:-0.015em;
+  }
+  .mark{position:absolute;top:64px;left:110px;font-size:26px;font-weight:700;letter-spacing:0.02em;opacity:.62;}
+  .num{position:absolute;bottom:64px;right:110px;font-size:24px;font-weight:600;opacity:.42;letter-spacing:.06em;}
+
+  h1{font-size:96px;line-height:1.32;font-weight:800;letter-spacing:-0.03em;}
+  h2{font-size:78px;line-height:1.34;font-weight:800;letter-spacing:-0.03em;}
+  .lead{font-size:38px;line-height:1.7;font-weight:500;}
+  .rule{width:96px;height:8px;border-radius:4px;background:var(--terra);}
+
+  /* ── 공통: 리포트 목업 ─────────────────────────────────── */
+  .report{
+    background:#fff;border:3px solid var(--border);border-radius:28px;
+    padding:48px 48px 44px;box-shadow:0 24px 60px -30px rgba(38,49,64,.45);
+  }
+  .report .rdate{font-size:26px;font-weight:600;color:var(--taupe);letter-spacing:.01em;}
+  .report .rhead{font-size:44px;font-weight:800;line-height:1.4;color:var(--navy);margin-top:14px;}
+  .report .rsub{font-size:26px;color:var(--taupe);margin-top:12px;font-weight:500;}
+  .report .rows{margin-top:34px;border-top:2px solid var(--border);}
+  .report .row{display:flex;align-items:center;gap:24px;padding:26px 0;border-bottom:2px solid #F1E9DC;}
+  .report .row:last-child{border-bottom:none;}
+  .report .time{font-size:28px;font-weight:700;color:var(--taupe);flex:none;width:104px;}
+  .report .title{font-size:32px;font-weight:700;color:var(--ink);flex:1;}
+  .chip{font-size:24px;font-weight:800;padding:11px 22px;border-radius:999px;flex:none;letter-spacing:0;}
+  .chip.done{background:var(--navy-soft);color:var(--navy);}
+  .chip.check{background:#FBE7DA;color:var(--terra);}
+  .quote{font-size:28px;line-height:1.55;color:var(--taupe);margin-top:30px;font-weight:500;
+         background:var(--cream);border-radius:18px;padding:24px 28px;}
+
+  /* ── 01 도입 — 네이비 전면 텍스트 ────────────────────────── */
+  #d1{background:var(--navy);color:var(--cream);justify-content:flex-end;}
+  #d1 .rule{margin-bottom:56px;}
+  #d1 h1 em{font-style:normal;color:#F0A87C;}
+  #d1 .mark,#d1 .num{color:var(--cream);}
+
+  /* ── 02 정상 리포트 — 크림, 목업 중심 ───────────────────── */
+  #d2{background:var(--cream);color:var(--ink);justify-content:center;gap:44px;padding-top:150px;}
+  #d2 .cap{font-size:40px;font-weight:800;color:var(--navy);line-height:1.45;}
+  #d2 .mark{color:var(--navy);} #d2 .num{color:var(--taupe);}
+
+  /* ── 03 확인 필요 리포트 — 베이지, 목업 중심 ─────────────── */
+  #d3{background:var(--beige);color:var(--ink);justify-content:center;gap:44px;padding-top:150px;}
+  #d3 .cap{font-size:40px;font-weight:800;color:var(--navy);line-height:1.45;}
+  #d3 .cap em{font-style:normal;color:var(--terra);}
+  #d3 .mark{color:var(--navy);} #d3 .num{color:var(--taupe);}
+
+  /* ── 04 정직한 판정 — 네이비 선언 ───────────────────────── */
+  #d4{background:var(--navy);color:var(--cream);justify-content:center;}
+  #d4 h2 em{font-style:normal;color:#F0A87C;}
+  #d4 .lead{margin-top:72px;padding-top:56px;border-top:2px solid rgba(251,247,240,.22);color:#C9D6E5;max-width:800px;}
+  #d4 .mark,#d4 .num{color:var(--cream);}
+
+  /* ── 05 알림 정책 — 크림, 조용함을 여백으로 ─────────────── */
+  #d5{background:var(--cream);color:var(--ink);justify-content:center;}
+  #d5 h2{color:var(--navy);max-width:820px;}
+  #d5 .lead{margin-top:56px;color:var(--taupe);max-width:800px;}
+  #d5 .opts{margin-top:76px;padding-top:48px;border-top:3px solid var(--border);display:flex;gap:20px;flex-wrap:wrap;}
+  #d5 .opt{font-size:28px;font-weight:700;color:var(--taupe);border:3px solid var(--border);border-radius:999px;padding:18px 32px;}
+  #d5 .opt.on{background:var(--terra);border-color:var(--terra);color:#fff;}
+  #d5 .mark{color:var(--navy);} #d5 .num{color:var(--taupe);}
+
+  /* ── 06 CTA ─────────────────────────────────────────── */
+  #d6{background:var(--cream);color:var(--ink);justify-content:center;}
+  #d6 h2{color:var(--navy);}
+  #d6 .lead{margin-top:44px;color:var(--taupe);}
+  #d6 .btn{display:inline-block;margin-top:80px;align-self:flex-start;background:var(--terra);color:#fff;
+           font-size:44px;font-weight:800;padding:38px 76px;border-radius:20px;letter-spacing:-0.01em;}
+  #d6 .url{margin-top:40px;font-size:34px;font-weight:700;color:var(--navy);letter-spacing:0;}
+  #d6 .note{position:absolute;left:110px;bottom:64px;font-size:24px;line-height:1.6;color:var(--taupe);max-width:660px;}
+  #d6 .mark{color:var(--navy);} #d6 .num{color:var(--taupe);}
+</style>
+</head>
+<body>
+
+<!-- 01 도입 -->
+<section class="card" id="d1">
+  <div class="mark">시니어 스케줄러</div>
+  <div class="rule"></div>
+  <h1>전화가 끝나면,<br>보호자에게는<br><em>이런 리포트가<br>도착합니다.</em></h1>
+  <div class="num">01</div>
+</section>
+
+<!-- 02 정상 리포트 예시 -->
+<section class="card" id="d2">
+  <div class="mark">시니어 스케줄러</div>
+  <div class="cap">별일 없던 날은,<br>이렇게 한 줄이면 충분합니다.</div>
+  <div class="report">
+    <div class="rdate">7월 28일 (월) · 어머니</div>
+    <div class="rhead">오늘은 이상 신호가 없었어요</div>
+    <div class="rsub">일정 2건 모두 확인했습니다</div>
+    <div class="rows">
+      <div class="row">
+        <div class="time">08:00</div><div class="title">아침 혈압약</div><div class="chip done">완료</div>
+      </div>
+      <div class="row">
+        <div class="time">13:00</div><div class="title">점심 식사</div><div class="chip done">완료</div>
+      </div>
+    </div>
+  </div>
+  <div class="num">02</div>
+</section>
+
+<!-- 03 확인 필요 리포트 예시 -->
+<section class="card" id="d3">
+  <div class="mark">시니어 스케줄러</div>
+  <div class="cap">애매하게 답하신 날은<br><em>“확인 필요”</em>라고 그대로 알려드립니다.</div>
+  <div class="report">
+    <div class="rdate">7월 29일 (화) · 어머니</div>
+    <div class="rhead">확인이 필요한 일이 1건 있어요</div>
+    <div class="rsub">일정 2건 중 1건은 답변이 분명하지 않았습니다</div>
+    <div class="rows">
+      <div class="row">
+        <div class="time">08:00</div><div class="title">아침 혈압약</div><div class="chip done">완료</div>
+      </div>
+      <div class="row">
+        <div class="time">19:00</div><div class="title">저녁 혈압약</div><div class="chip check">확인 필요</div>
+      </div>
+    </div>
+    <div class="quote">“먹었나… 아까 먹은 것 같기도 하고.”<br>— 이런 답변은 완료로 반올림하지 않습니다.</div>
+  </div>
+  <div class="num">03</div>
+</section>
+
+<!-- 04 정직한 판정 -->
+<section class="card" id="d4">
+  <div class="mark">시니어 스케줄러</div>
+  <h2>모르는 건<br><em>모른다고</em><br>말씀드립니다.</h2>
+  <div class="lead">확실하지 않은 답을 억지로 “완료”로 만들면<br>리포트는 보기 좋아지지만, 믿을 수 없게 됩니다.<br>그래서 애매한 건 애매한 채로 전해드립니다.</div>
+  <div class="num">04</div>
+</section>
+
+<!-- 05 알림 정책 -->
+<section class="card" id="d5">
+  <div class="mark">시니어 스케줄러</div>
+  <h2>이상이 없으면,<br>알림도 오지<br>않습니다.</h2>
+  <div class="lead">알림이 하루에 몇 번씩 울리면,<br>결국 아무도 보지 않게 되니까요.<br>확인이 필요한 일이 있을 때만 알려드립니다.</div>
+  <div class="opts">
+    <div class="opt">모든 결과</div>
+    <div class="opt on">이상 신호만 · 기본</div>
+    <div class="opt">주간 요약만</div>
+  </div>
+  <div class="num">05</div>
+</section>
+
+<!-- 06 CTA -->
+<section class="card" id="d6">
+  <div class="mark">시니어 스케줄러</div>
+  <h2>부모님 리포트,<br>먼저 받아보시겠어요?</h2>
+  <div class="lead">베타 사전등록을 받고 있습니다.<br>준비되면 이메일로 가장 먼저 알려드릴게요.</div>
+  <div class="btn">사전등록 하러 가기</div>
+  <div class="url">seniorscheduler.vercel.app</div>
+  <div class="note">화면은 이해를 돕기 위한 예시입니다. 의료 조언을 제공하지 않으며, 긴급 구조를 대행하지 않습니다.</div>
+  <div class="num">06</div>
+</section>
+
+</body>
+</html>
