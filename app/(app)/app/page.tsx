@@ -72,10 +72,12 @@ function weekdayLabelKo(ymd: string): string {
 }
 
 export default async function DashboardPage() {
-  // 온보딩 게이트 — 미완료면 설문으로. 조회 실패는 통과(서비스가 막히지 않게).
+  // 온보딩 게이트 — 미완료면 설문으로.
+  // available:false(미인증·DB 오류·0010 미적용)는 **통과**시킨다 — 조회 실패로 사용자를
+  // 온보딩에 가두면 마이그레이션 지연 시 앱 전체가 막힌다(fail-open).
   try {
     const onboarding = await getOnboardingState();
-    if (onboarding.onboarded_at === null) redirect("/app/onboarding");
+    if (onboarding.available && onboarding.onboarded_at === null) redirect("/app/onboarding");
   } catch (e) {
     // redirect() 는 내부적으로 throw 하므로 다시 던져 준다.
     if (e && typeof e === "object" && "digest" in e) throw e;

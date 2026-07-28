@@ -34,12 +34,25 @@ async function requireGuardianId(): Promise<
   return { ok: true, id: user.id };
 }
 
-/** 온보딩 상태 조회. 행이 없거나 오류면 "미완료 + 빈 프로필"로 강등(throw 금지). */
-export async function getOnboardingState(): Promise<
-  { ok: true; state: OnboardingState } | { ok: false; error: string }
-> {
+/**
+ * 온보딩 상태 조회. **throw 하지 않고 항상 상태를 반환한다** (게이트가 이 값 하나만 보고 판단).
+ *
+ * `available:false` = 조회 자체가 불가한 상태(미인증·DB 오류·0010 미적용).
+ * 이때 게이트는 **통과시킨다** — 조회가 실패했다고 사용자를 온보딩에 가두면
+ * 마이그레이션 지연 시 앱 전체가 막힌다(fail-open).
+ */
+export type OnboardingGateState = OnboardingState & { available: boolean };
+
+const UNAVAILABLE_STATE: OnboardingGateState = {
+  onboarded_at: null,
+  skipped: false,
+  profile: EMPTY_ONBOARDING_PROFILE,
+  available: false,
+};
+
+export async function getOnboardingState(): Promise<OnboardingGateState> {
   const auth = await requireGuardianId();
-  if (!auth.ok) return auth;
+  if (!auth.ok) return UNAVAILABLE_STATE;
 
   const supabase = createServerSupabase();
   const { data, error } = await supabase
@@ -50,7 +63,7 @@ export async function getOnboardingState(): Promise<
 
   if (error) {
     console.error("[onboarding] get failed:", error.code, error.message);
-    return { ok: false, error: "온보딩 정보를 불러오지 못했습니다." };
+    return UNAVAILABLE_STATE;
   }
 
   const row = (data ?? null) as Record<string, unknown> | null;
@@ -64,17 +77,15 @@ export async function getOnboardingState(): Promise<
   });
 
   return {
-    ok: true,
-    state: {
-      onboarded_at: (row?.onboarded_at as string | null) ?? null,
-      skipped: Boolean(row?.onboarding_skipped),
-      profile: parsed.success ? parsed.data : EMPTY_ONBOARDING_PROFILE,
-    },
+    onboarded_at: (row?.onboarded_at as string | null) ?? null,
+    skipped: Boolean(row?.onboarding_skipped),
+    profile: parsed.success ? parsed.data : EMPTY_ONBOARDING_PROFILE,
+    available: true,
   };
 }
 
 /** 온보딩 프로필 저장 — zod 검증 후 자기 행만 update. onboarded_at 기록(재노출 방지). */
-export async function saveOnboardingProfile(raw: unknown): Promise<ActionResult> {
+export async function saveOnboarding(raw: unknown): Promise<ActionResult> {
   const parsed = onboardingProfileSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "입력이 올바르지 않습니다." };

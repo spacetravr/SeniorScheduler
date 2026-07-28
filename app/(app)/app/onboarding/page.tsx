@@ -15,9 +15,11 @@ import { getOnboardingState } from "@/lib/actions/onboarding";
 export const dynamic = "force-dynamic";
 
 export default async function OnboardingPage() {
+  // getOnboardingState 는 throw 하지 않지만(항상 상태 반환), 방어적으로 감싼다.
   let state: OnboardingState | null = null;
   try {
-    state = await getOnboardingState();
+    const gate = await getOnboardingState();
+    state = gate.available ? gate : null;
   } catch {
     state = null;
   }
