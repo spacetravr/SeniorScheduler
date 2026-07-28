@@ -9,14 +9,14 @@ import { PreregisterLink } from "@/components/marketing/PreregisterLink";
 import { ReportPreviewCard } from "@/components/marketing/ReportPreviewCard";
 
 const ABOUT_DESCRIPTION =
-  "Senior Scheduler는 보호자가 웹에서 부모님의 복약·병원 일정을 등록하면, 예약한 시간에 부모님 일반 전화로 안부·확인 전화를 걸고 결과를 리포트로 알려드립니다. 작동 방식과 안심 설계를 소개합니다.";
+  "Senior Scheduler를 만든 이유와 지키는 원칙을 소개합니다. 작동 방식, 리포트 상태 뱃지의 의미, 억지로 판단하지 않는 안심 설계를 확인하세요.";
 
 export const metadata: Metadata = {
-  title: "서비스 소개",
+  title: "소개",
   description: ABOUT_DESCRIPTION,
   alternates: { canonical: "/about" },
   openGraph: {
-    title: "서비스 소개 | Senior Scheduler",
+    title: "소개 | Senior Scheduler",
     description: ABOUT_DESCRIPTION,
     type: "website",
     locale: "ko_KR",
@@ -125,7 +125,7 @@ export default function AboutPage() {
       <section className="bg-gradient-to-b from-surface to-bg">
         <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-5 py-16 text-center sm:px-8 sm:py-24">
           <span className="rounded-base bg-accent/15 px-3 py-1 text-sm font-semibold text-accent">
-            서비스 소개
+            소개
           </span>
           <h1 className="text-4xl font-bold leading-[1.15] tracking-tight sm:text-5xl">
             멀리 있어도, 매일
@@ -134,8 +134,9 @@ export default function AboutPage() {
           </h1>
           <p className="max-w-xl text-lg font-medium leading-relaxed text-text-muted sm:text-xl">
             보호자가 부모님의 복약·병원 일정을 웹에 등록해 두면, 예약한 시간에
-            부모님 일반 전화로 안부·확인 전화를 대신 걸어 드리고 결과를
-            리포트로 알려드립니다. 부모님은 앱도, 배울 것도 필요 없어요.
+            부모님 일반 전화로 안부·확인 전화를 걸어 드리고 결과를 리포트로
+            알려드립니다. 매일 챙기고 싶은 마음을 거들 뿐, 부모님은 앱도 배울
+            것도 필요 없어요.
           </p>
         </div>
       </section>

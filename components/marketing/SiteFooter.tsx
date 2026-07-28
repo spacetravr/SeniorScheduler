@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { EMERGENCY_DISCLAIMER } from "@/lib/contracts/report-view";
 
 /** 푸터 내비게이션 링크. */
 const FOOTER_LINKS = [
-  { href: "/about", label: "서비스 소개" },
+  { href: "/service", label: "서비스" },
+  { href: "/about", label: "소개" },
   { href: "/faq", label: "자주 묻는 질문" },
   { href: "/terms", label: "이용약관" },
   { href: "/privacy", label: "개인정보처리방침" },
@@ -40,6 +42,8 @@ export function SiteFooter() {
             본 서비스는 의료 조언을 제공하지 않으며, 안부·일정 안내를 돕는
             도구입니다.
           </p>
+          {/* 119 대체 아님 고지 — 문구는 lib/contracts 단일 소스(하드코딩 금지). */}
+          <p className="text-xs">{EMERGENCY_DISCLAIMER}</p>
         </div>
       </div>
     </footer>
