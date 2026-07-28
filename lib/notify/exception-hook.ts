@@ -6,6 +6,7 @@ import { renderReportEmail } from "@/lib/reports/render/email";
 import { renderReportAlimtalk } from "@/lib/reports/render/alimtalk";
 import { reportLinks } from "@/lib/notify/links";
 import { parseNotifyLevel, routeNotify } from "@/lib/notify";
+import { createSupabaseNotifyDedupe } from "@/lib/notify/dedupe";
 import type { NotifyResult } from "@/lib/contracts/notify";
 
 /**
@@ -138,18 +139,25 @@ export async function notifyExceptionForSession(
       seniorPhone: senior.phone,
     });
 
-    return await routeNotify({
-      kind: "EXCEPTION_ALERT",
-      level: parseNotifyLevel(guardian.notify_level),
-      tone: digest.tone,
-      // ALIMTALK 수신 번호는 보호자 번호 컬럼이 아직 없어 미지정(어댑터가 skip). 심사·컬럼 추가 후 연결.
-      recipients: { EMAIL: guardian.email },
-      subject: mail.subject,
-      text: mail.text,
-      html: mail.html,
-      templateVars: talk.templateVars,
-      linkUrl: links.reportUrl,
-    });
+    return await routeNotify(
+      {
+        kind: "EXCEPTION_ALERT",
+        level: parseNotifyLevel(guardian.notify_level),
+        tone: digest.tone,
+        // ALIMTALK 수신 번호는 보호자 번호 컬럼이 아직 없어 미지정(어댑터가 skip). 심사·컬럼 추가 후 연결.
+        recipients: { EMAIL: guardian.email },
+        subject: mail.subject,
+        text: mail.text,
+        html: mail.html,
+        templateVars: talk.templateVars,
+        linkUrl: links.reportUrl,
+        // 하루 1회 상한 — 같은 날 이상 신호가 여러 번 생겨도 알림은 한 번만(오경보 관리).
+        guardianId: guardian.id,
+        now,
+      },
+      undefined,
+      createSupabaseNotifyDedupe(supabase),
+    );
   } catch (err) {
     // 알림 실패가 통화 파이프라인을 죽이지 않게 — 이름만 로깅(PII·스택 미노출).
     console.error("[notify/hook] unexpected:", err instanceof Error ? err.name : "error");

@@ -111,7 +111,7 @@ export default function PreregisterPage() {
         <div className="w-full max-w-md">
           <PreregisterForm />
 
-          {/* 전환 직전 불안 해소 — 신뢰 4배지 축약형(§2). */}
+          {/* 전환 직전 불안 해소 — 신뢰 배지 축약형(§2). */}
           <TrustBadges variant="compact" className="mt-6" />
 
           <p className="mt-6 text-center text-base">

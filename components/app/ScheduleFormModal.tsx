@@ -9,8 +9,16 @@ import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import type { Senior } from "@/lib/contracts/domain";
 import { ScheduleForm } from "@/components/app/ScheduleForm";
+import type { SchedulePrefill } from "@/components/app/schedulePrefill";
 
-export function ScheduleFormModal({ seniors }: { seniors: Senior[] }) {
+export function ScheduleFormModal({
+  seniors,
+  prefill,
+}: {
+  seniors: Senior[];
+  /** 온보딩 답변 기반 기본값(서버에서 계산해 전달). 없으면 기존 기본값으로 동작. */
+  prefill?: SchedulePrefill | null;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -50,6 +58,7 @@ export function ScheduleFormModal({ seniors }: { seniors: Senior[] }) {
               <ScheduleForm
                 mode="create"
                 seniors={seniors}
+                prefill={prefill}
                 onDone={() => setOpen(false)}
               />
             </div>

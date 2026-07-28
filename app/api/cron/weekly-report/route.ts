@@ -5,6 +5,7 @@ import { buildDigest, type DigestInput } from "@/lib/reports/digest";
 import { renderReportEmail } from "@/lib/reports/render/email";
 import { weeklyRangeKst } from "@/lib/reports/weekly";
 import { routeNotify, parseNotifyLevel } from "@/lib/notify";
+import { createSupabaseNotifyDedupe } from "@/lib/notify/dedupe";
 import { reportLinks } from "@/lib/notify/links";
 
 export const runtime = "nodejs";
@@ -175,6 +176,8 @@ export async function POST(req: Request) {
   );
 
   const links = reportLinks();
+  // 하루 1회 상한 — 크론 재시도/중복 실행 시 같은 보호자에게 주간 메일이 두 번 가지 않게.
+  const dedupe = createSupabaseNotifyDedupe(supabase);
   let sent = 0;
   let skipped = 0;
   let failed = 0;
@@ -196,16 +199,22 @@ export async function POST(req: Request) {
 
     const digest = buildDigest("WEEK", items, { startYmd, endYmd });
     const mail = renderReportEmail(digest, links);
-    const results = await routeNotify({
-      kind: "WEEKLY_DIGEST",
-      level: parseNotifyLevel(g.notify_level),
-      tone: digest.tone,
-      recipients: { EMAIL: to },
-      subject: mail.subject,
-      text: mail.text,
-      html: mail.html,
-      linkUrl: links.reportUrl,
-    });
+    const results = await routeNotify(
+      {
+        kind: "WEEKLY_DIGEST",
+        level: parseNotifyLevel(g.notify_level),
+        tone: digest.tone,
+        recipients: { EMAIL: to },
+        subject: mail.subject,
+        text: mail.text,
+        html: mail.html,
+        linkUrl: links.reportUrl,
+        guardianId: g.id,
+        now,
+      },
+      undefined,
+      dedupe,
+    );
 
     // 채널별 결과 집계 — 한 채널이라도 sent 면 sent 로 센다.
     if (results.some((r) => r.status === "sent")) sent += 1;
