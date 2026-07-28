@@ -116,9 +116,11 @@ export function DigestItems({ seniors }: { seniors: DigestSenior[] }) {
                 aria-hidden
               />
               <span className="break-keep text-sm font-semibold">{s.name}</span>
+              {/* 문구 주의: 상태 라벨 "확인필요"(UNCERTAIN)와 겹치지 않는 표현을 쓴다 —
+                  이 숫자는 불발·미이행까지 포함한 예외 건수이기 때문. 집계 로직은 그대로. */}
               {s.exceptionCount > 0 ? (
                 <span className="text-xs font-semibold text-accent tabular-nums">
-                  확인 필요 {s.exceptionCount}건
+                  살펴볼 일 {s.exceptionCount}건
                 </span>
               ) : null}
             </div>

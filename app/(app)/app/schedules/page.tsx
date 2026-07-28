@@ -2,13 +2,18 @@
  * 일정 (/app/schedules) — 실데이터 목록(ON/OFF 토글) + 등록/수정/삭제 (server actions 결합).
  * 상단 우측 "새 일정 등록" 버튼(모달)으로 등록하고, 목록은 피보호자별 → 시간대별로 그룹핑한다.
  * 피보호자가 없으면 먼저 등록하도록 안내한다.
+ *
+ * 온보딩 프리필: getOnboardingState() 로 받은 답변을 기본값(발신 시각·유형)으로 변환해
+ * 등록 폼에 내려준다. 조회 불가(available:false)·건너뛰기·무응답이면 기존 기본값 그대로.
  */
 import { Users, AlarmClock } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { ScheduleFormModal } from "@/components/app/ScheduleFormModal";
 import { ScheduleItem } from "@/components/app/ScheduleItem";
 import { EmptyState } from "@/components/app/EmptyState";
+import { buildSchedulePrefill } from "@/components/app/schedulePrefill";
 import { getSchedules, getSeniors } from "@/lib/db/queries";
+import { getOnboardingState } from "@/lib/actions/onboarding";
 import type { Schedule } from "@/lib/contracts/domain";
 
 export const dynamic = "force-dynamic";
@@ -31,15 +36,27 @@ function bucketOf(callTime: string): (typeof TIME_BUCKETS)[number]["key"] {
 }
 
 export default async function SchedulesPage() {
-  const [schedules, seniors] = await Promise.all([getSchedules(), getSeniors()]);
+  const [schedules, seniors, onboarding] = await Promise.all([
+    getSchedules(),
+    getSeniors(),
+    // throw 하지 않는 액션이지만 방어적으로 감싼다 — 프리필 실패가 목록을 막으면 안 된다.
+    getOnboardingState().catch(() => null),
+  ]);
   const seniorName = new Map(seniors.map((s) => [s.id, s.name]));
+  const prefill = buildSchedulePrefill(
+    onboarding?.available ? onboarding.profile : null,
+  );
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         title="일정"
         subtitle="복약·병원 등 안내 전화 일정을 관리합니다."
-        action={seniors.length > 0 ? <ScheduleFormModal seniors={seniors} /> : undefined}
+        action={
+          seniors.length > 0 ? (
+            <ScheduleFormModal seniors={seniors} prefill={prefill} />
+          ) : undefined
+        }
       />
 
       {seniors.length === 0 ? (

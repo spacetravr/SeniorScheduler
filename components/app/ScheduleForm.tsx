@@ -7,11 +7,17 @@
  *   - 주중/요일선택 → "FREQ=WEEKLY;BYDAY=..."
  * 신규 등록은 항상 비활성(active=false)으로 만들고, 발신 ON 은 목록 토글에서 처리한다
  * (미동의 피보호자 활성화 에러를 등록 흐름에서 분리).
+ *
+ * 프리필(신규 등록 전용): 온보딩 답변으로 만든 기본값(schedulePrefill.ts)을 **초기값으로만**
+ * 사용한다 — 렌더 중 사용자의 입력을 덮어쓰지 않는다. 값이 없으면 기존 기본값과 동일하고
+ * 힌트도 표시하지 않는다.
  */
 import { useMemo, useState, useTransition } from "react";
+import { Sparkles } from "lucide-react";
 import { SCHEDULE_TYPES, scheduleTypeLabel } from "@/lib/contracts/domain";
 import type { Schedule, Senior } from "@/lib/contracts/domain";
 import { createSchedule, updateSchedule } from "@/lib/actions/schedules";
+import { NO_PREFILL, type SchedulePrefill } from "@/components/app/schedulePrefill";
 
 const WEEKDAYS = [
   { code: "MO", label: "월" },
@@ -41,16 +47,33 @@ function parseRrule(rrule: string | undefined): { repeat: Repeat; days: string[]
 }
 
 type Props =
-  | { mode: "create"; seniors: Senior[]; onDone?: () => void; schedule?: undefined }
-  | { mode: "edit"; schedule: Schedule; seniors: Senior[]; onDone?: () => void };
+  | {
+      mode: "create";
+      seniors: Senior[];
+      onDone?: () => void;
+      schedule?: undefined;
+      /** 온보딩 답변 기반 기본값. 없으면 기존 기본값(09:00 · 복약)으로 동작한다. */
+      prefill?: SchedulePrefill | null;
+    }
+  | {
+      mode: "edit";
+      schedule: Schedule;
+      seniors: Senior[];
+      onDone?: () => void;
+      prefill?: undefined;
+    };
 
 export function ScheduleForm(props: Props) {
   const isEdit = props.mode === "edit";
+  // 프리필은 신규 등록에만 적용. 수정은 저장된 값이 언제나 우선한다.
+  const prefill = isEdit ? NO_PREFILL : (props.prefill ?? NO_PREFILL);
   const initial = parseRrule(props.schedule?.rrule);
   const [repeat, setRepeat] = useState<Repeat>(initial.repeat);
   const [days, setDays] = useState<string[]>(initial.days);
   // 신규 등록은 유형 복수 선택(1개 이상). 수정은 단일 유형이라 이 상태를 쓰지 않는다.
-  const [types, setTypes] = useState<string[]>([props.schedule?.type ?? "MEDICATION"]);
+  const [types, setTypes] = useState<string[]>(
+    props.schedule ? [props.schedule.type] : prefill.types,
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -130,7 +153,7 @@ export function ScheduleForm(props: Props) {
         form.reset();
         setRepeat("DAILY");
         setDays(["MO"]);
-        setTypes(["MEDICATION"]);
+        setTypes(prefill.types);
         props.onDone?.();
         return;
       }
@@ -245,10 +268,18 @@ export function ScheduleForm(props: Props) {
               name="call_time"
               type="time"
               required
-              defaultValue={s?.call_time ?? "09:00"}
+              defaultValue={prefill.callTime}
               className="rounded-base border border-border bg-bg px-3 py-2.5 outline-none focus:border-primary"
             />
           </label>
+
+          {/* 프리필 안내 — 온보딩 답변이 반영됐을 때만 보인다(건너뛰었으면 숨김). */}
+          {prefill.hint ? (
+            <p className="flex items-start gap-1.5 break-keep rounded-base bg-primary-soft px-3 py-2 text-xs leading-relaxed text-primary">
+              <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden strokeWidth={2} />
+              <span>{prefill.hint}</span>
+            </p>
+          ) : null}
         </>
       )}
 
