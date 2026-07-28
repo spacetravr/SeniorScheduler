@@ -1,18 +1,28 @@
 /**
  * 대시보드 (/app)
+ * - 온보딩 게이트: getOnboardingState() 가 미완료(onboarded_at === null)면 /app/onboarding 으로 이동.
+ *   조회 실패 시에는 **통과**시킨다(설문이 서비스 진입을 막지 않게).
+ * - 최상단 "오늘의 안심 요약": 오늘(KST) 다이제스트의 톤 헤드라인 카드(DigestCard).
+ *   기존 3연속 불발 경고 배너는 이 카드 안으로 흡수했다(중복 배너 금지).
  * - 피보호자 0명: 온보딩 스텝(OnboardingSteps)이 화면 그 자체가 된다.
  * - 피보호자 1명+: 피보호자별 to-do 카드(오늘의 일정 + 수행 여부)를 세로 나열.
  *   수행 여부는 오늘(KST) 세션·리포트를 schedule_id로 매칭해 도출. (lib 수정 없이 page 내 조합)
  * - 주간 이행률: getRecentReports() 실데이터. "최근 통화 결과" 섹션은 제거됨.
  */
 import Link from "next/link";
-import { CalendarPlus, AlertTriangle } from "lucide-react";
+import { redirect } from "next/navigation";
+import { CalendarPlus } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { kstYmd } from "@/components/app/format";
 import { OnboardingSteps } from "@/components/app/OnboardingSteps";
 import { SeniorFormModal } from "@/components/app/SeniorFormModal";
 import { SeniorTodoCard, type SeniorTodo } from "@/components/app/SeniorTodoCard";
+import { DigestCard, type CallTarget } from "@/components/app/DigestCard";
 import { hasThreeConsecutiveMissed } from "@/components/app/missedStreak";
+import { buildDigest, type DigestInput } from "@/lib/reports/digest";
+import { MEDICAL_DISCLAIMER } from "@/lib/contracts/domain";
+import { EMERGENCY_DISCLAIMER } from "@/lib/contracts/report-view";
+import { getOnboardingState } from "@/lib/actions/onboarding";
 import {
   getTodayCallInstances,
   getSeniors,
@@ -62,6 +72,15 @@ function weekdayLabelKo(ymd: string): string {
 }
 
 export default async function DashboardPage() {
+  // 온보딩 게이트 — 미완료면 설문으로. 조회 실패는 통과(서비스가 막히지 않게).
+  try {
+    const onboarding = await getOnboardingState();
+    if (onboarding.onboarded_at === null) redirect("/app/onboarding");
+  } catch (e) {
+    // redirect() 는 내부적으로 throw 하므로 다시 던져 준다.
+    if (e && typeof e === "object" && "digest" in e) throw e;
+  }
+
   const [instances, seniors, schedules, sessions, reports] = await Promise.all([
     getTodayCallInstances(),
     getSeniors(),
@@ -147,6 +166,55 @@ export default async function DashboardPage() {
     };
   });
 
+  // ── 오늘의 안심 요약 (L0) ────────────────────────────────────
+  // 집계·톤·문구는 buildDigest 단일 소스. 여기서는 조회 결과를 DigestInput 으로 매핑만 한다.
+  const seniorById = new Map(seniors.map((s) => [s.id, s]));
+  const sessionById = new Map(sessions.map((s) => [s.id, s]));
+  const scheduleById = new Map(schedules.map((s) => [s.id, s]));
+
+  const digestInputs: DigestInput[] = reports.map((r) => {
+    const session = sessionById.get(r.session_id);
+    const schedule =
+      session && session.schedule_id != null ? scheduleById.get(session.schedule_id) : undefined;
+    const title =
+      session?.purpose === "CONSENT" ? "동의 확인 전화" : schedule?.title ?? "안내 전화";
+    return {
+      id: r.id,
+      sessionId: session?.id ?? null,
+      createdAt: r.created_at,
+      status: r.adherence_status,
+      summary: r.summary,
+      moodFlag: r.mood_flag,
+      healthFlag: r.health_flag,
+      seniorId: session?.senior_id ?? "unknown",
+      seniorName: session ? seniorById.get(session.senior_id)?.name ?? "부모님" : "부모님",
+      title,
+    };
+  });
+
+  const todayDigest = buildDigest(
+    "DAY",
+    digestInputs.filter((i) => kstYmd(i.createdAt) === todayYmd),
+    { startYmd: todayYmd, endYmd: todayYmd },
+  );
+  // 최근 7일 추이 — 오늘 카드 한 장에만 얹는다(오늘 하루만으로는 추이가 그려지지 않으므로).
+  const recentTrend = buildDigest("WEEK", digestInputs).trend;
+
+  // 3회 연속 불발 — 기존 별도 경고 배너 대신 안심 요약 카드 안으로 흡수한다.
+  const missedStreakSeniors = seniors.filter((s) =>
+    hasThreeConsecutiveMissed(sessionsBySenior.get(s.id) ?? []),
+  );
+
+  // ALERT 시 tel: 대상 — 오늘 이상 신호가 있었거나 연속 불발인 피보호자.
+  const alertSeniorIds = new Set<string>(missedStreakSeniors.map((s) => s.id));
+  for (const s of todayDigest.seniors) {
+    if (s.exceptionCount > 0) alertSeniorIds.add(s.seniorId);
+  }
+  const callTargets: CallTarget[] = [...alertSeniorIds]
+    .map((id) => seniorById.get(id))
+    .filter((s): s is (typeof seniors)[number] => Boolean(s))
+    .map((s) => ({ name: s.name, phone: s.phone }));
+
   // ── 피보호자 0명: 온보딩 화면 ─────────────────────────────────
   if (!hasSeniors) {
     return (
@@ -160,6 +228,23 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="대시보드" subtitle={todayLabelKst()} />
+
+      {/* 오늘의 안심 요약 (L0) — 이것만 보고 닫아도 되는 층 */}
+      <DigestCard
+        digest={todayDigest}
+        title="오늘의 안심 요약"
+        trend={recentTrend}
+        hasMissedStreak={missedStreakSeniors.length > 0}
+        missedStreakNames={missedStreakSeniors.map((s) => s.name)}
+        callTargets={callTargets}
+      >
+        <Link
+          href="/app/reports"
+          className="text-sm font-semibold underline underline-offset-2"
+        >
+          리포트에서 자세히 보기
+        </Link>
+      </DigestCard>
 
       {/* 빠른 등록 — 피보호자 등록(모달) + 일정 등록 2버튼 */}
       <section aria-label="빠른 등록" className="grid grid-cols-2 gap-3">
@@ -187,37 +272,16 @@ export default async function DashboardPage() {
           </Link>
         </div>
         <div className="flex flex-col gap-4">
-          {seniors.map((s, i) => {
-            const missedAlert = hasThreeConsecutiveMissed(
-              sessionsBySenior.get(s.id) ?? [],
-            );
-            return (
-              <div key={s.id} className="flex flex-col gap-2">
-                {missedAlert ? (
-                  <div
-                    role="alert"
-                    className="flex items-start gap-2 rounded-base bg-accent/10 px-4 py-3 text-sm text-accent"
-                  >
-                    <AlertTriangle
-                      className="mt-0.5 h-4 w-4 shrink-0"
-                      aria-hidden
-                      strokeWidth={2}
-                    />
-                    <p className="break-keep leading-relaxed">
-                      최근 3회 연속 전화를 받지 못하셨어요. 직접 안부를 확인해 보시는
-                      걸 권해드려요.
-                    </p>
-                  </div>
-                ) : null}
-                <SeniorTodoCard
-                  senior={s}
-                  activeCount={activeScheduleCount.get(s.id) ?? 0}
-                  todos={todosBySenior.get(s.id) ?? []}
-                  colorIndex={i % 3}
-                />
-              </div>
-            );
-          })}
+          {/* 연속 불발 경고는 상단 "오늘의 안심 요약" 카드로 흡수됨 (중복 배너 금지) */}
+          {seniors.map((s, i) => (
+            <SeniorTodoCard
+              key={s.id}
+              senior={s}
+              activeCount={activeScheduleCount.get(s.id) ?? 0}
+              todos={todosBySenior.get(s.id) ?? []}
+              colorIndex={i % 3}
+            />
+          ))}
         </div>
       </section>
 
@@ -257,6 +321,16 @@ export default async function DashboardPage() {
           </p>
         )}
       </section>
+
+      {/* 가드레일 1 + THIRD-PLAN P0-7: 의료 / 긴급구조 고지 */}
+      <div className="flex flex-col gap-2 rounded-base bg-surface p-4">
+        <p className="break-keep text-xs leading-relaxed text-text-muted">
+          {MEDICAL_DISCLAIMER}
+        </p>
+        <p className="break-keep text-xs leading-relaxed text-text-muted">
+          {EMERGENCY_DISCLAIMER}
+        </p>
+      </div>
     </div>
   );
 }
