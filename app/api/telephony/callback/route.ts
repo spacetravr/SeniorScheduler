@@ -27,6 +27,7 @@ import {
   type CallbackResult,
 } from "@/lib/telephony/callback-handler";
 import { deductForCall } from "@/lib/credits";
+import { notifyExceptionForSession } from "@/lib/notify/exception-hook";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -175,6 +176,17 @@ async function deductIfCompleted(
   });
 }
 
+/**
+ * 리포트가 새로 기록되는 두 지점(COMPLETE / MARK_MISSED) 직후 예외 알림 훅을 돌린다.
+ * 알림 실패는 무시한다 — 통화 결과 기록은 이미 끝났고, 알림 때문에 콜백을 5xx 로 만들어
+ * 벤더 재전송을 유발해선 안 된다(notifyExceptionForSession 자체도 throw 하지 않는다).
+ */
+async function notifyIfReported(sessionId: string, result: CallbackResult): Promise<void> {
+  if (result.status !== "ok") return;
+  if (result.action !== "COMPLETE" && result.action !== "MARK_MISSED") return;
+  await notifyExceptionForSession(sessionId).catch(() => []);
+}
+
 export async function POST(req: Request) {
   const secret = process.env.TELEPHONY_CALLBACK_SECRET;
   if (!secret) {
@@ -223,6 +235,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "session_not_found" }, { status: 404 });
   }
   await deductIfCompleted(store, payload.session_id, result);
+  await notifyIfReported(payload.session_id, result);
   // ignored(멱등)·ok 모두 200 — 벤더 재전송을 유발하지 않도록 성공 응답.
   return NextResponse.json(result, { status: 200 });
 }
@@ -340,5 +353,6 @@ async function handleClawops(req: Request, secret: string): Promise<NextResponse
     return NextResponse.json({ error: "session_not_found" }, { status: 404 });
   }
   await deductIfCompleted(store, sessionId, result);
+  await notifyIfReported(sessionId, result);
   return NextResponse.json(result, { status: 200 });
 }

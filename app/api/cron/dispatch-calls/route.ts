@@ -7,6 +7,7 @@ import { canDispatchScheduleCall, canDispatchConsentCall } from "@/lib/calls/sta
 import { isConsentSessionDue } from "@/lib/calls/consent-scheduling";
 import { runScheduleCall, runConsentCall, classifyAndReportSchedule } from "@/lib/calls/run-call";
 import { deductForCall } from "@/lib/credits";
+import { notifyExceptionForSession } from "@/lib/notify/exception-hook";
 import { createLlmClient } from "@/lib/ai/llm";
 import { selectTelephony, getConfiguredProvider, resolveClawOpsConfig } from "@/lib/telephony/provider";
 import { TelephonyNotConfiguredError, type TelephonyAdapter } from "@/lib/telephony/types";
@@ -406,6 +407,10 @@ export async function POST(req: Request) {
       health_flag: result.report.health_flag,
       prompt_version: result.report.prompt_version,
     });
+
+    // 예외 알림 훅 — 리포트 기록 직후 오늘(KST) 다이제스트로 톤 판정 → 레벨에 따라 발송.
+    // 절대 throw 하지 않는 구현이지만, 디스패치 루프 보호를 위해 한 겹 더 감싼다.
+    await notifyExceptionForSession(sessionId, now).catch(() => []);
 
     dispatched += 1;
   }
