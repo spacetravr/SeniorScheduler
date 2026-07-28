@@ -98,7 +98,10 @@ function seniorBlock(senior: ReportDigest["seniors"][number]): string {
     `<tr><td style="padding:18px 0 6px 0;font-size:15px;font-weight:700;color:${C.text};">`,
     `${esc(senior.name)}`,
     senior.exceptionCount > 0
-      ? ` <span style="font-weight:400;font-size:13px;color:${C.accent};">확인 ${senior.exceptionCount}건</span>`
+      ? // 웹 리포트의 피보호자 묶음 배지와 같은 문구를 쓴다("살펴볼 일 N건").
+        // "확인 N건" 은 UNCERTAIN 상태 라벨("확인필요")과 같은 말로 읽혀 불발·미이행까지
+        // 판정 유보로 오해되므로 쓰지 않는다. 집계(exceptionCount)는 그대로.
+        ` <span style="font-weight:400;font-size:13px;color:${C.accent};">살펴볼 일 ${senior.exceptionCount}건</span>`
       : "",
     `</td></tr>`,
     `<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table></td></tr>`,
