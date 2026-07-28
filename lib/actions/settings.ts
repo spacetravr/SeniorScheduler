@@ -6,7 +6,13 @@ import {
   DEFAULT_NOTIFY_SETTINGS,
   type NotifySettings,
 } from "@/lib/contracts/settings";
+import {
+  DEFAULT_NOTIFY_LEVEL,
+  NOTIFY_LEVELS,
+  type NotifyLevel,
+} from "@/lib/contracts/notify";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { z } from "zod";
 
 /**
  * 알림 설정 조회/저장 Server Actions.
@@ -76,6 +82,70 @@ export async function updateNotifySettings(raw: unknown): Promise<ActionResult> 
 
   if (error) {
     console.error("[settings] update failed:", error.code, error.message);
+    return { ok: false, error: "알림 설정 저장에 실패했습니다." };
+  }
+
+  revalidatePath("/app/settings");
+  revalidatePath("/app");
+  return { ok: true };
+}
+
+// ── 알림 레벨 (0010 notify_level — boolean 3종을 덮는 상위 개념) ────────────────
+
+const notifyLevelSchema = z.enum(NOTIFY_LEVELS);
+
+/** 로그인 guardian 의 알림 레벨 조회. 오류·미기록이면 기본값(EXCEPTION)으로 강등. */
+export async function getNotifyLevel(): Promise<
+  { ok: true; level: NotifyLevel } | { ok: false; error: string }
+> {
+  const auth = await requireGuardianId();
+  if (!auth.ok) return auth;
+
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase
+    .from("guardians")
+    .select("notify_level")
+    .eq("id", auth.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[settings] get level failed:", error.code, error.message);
+    return { ok: false, error: "알림 설정을 불러오지 못했습니다." };
+  }
+  const parsed = notifyLevelSchema.safeParse(data?.notify_level);
+  return { ok: true, level: parsed.success ? parsed.data : DEFAULT_NOTIFY_LEVEL };
+}
+
+/**
+ * 알림 레벨 저장 — zod 검증 후 자기 행만 update.
+ * 하위호환: 0008 boolean 3종을 레벨에 맞춰 함께 동기화한다(옛 코드 경로·기존 쿼리가 계속 성립).
+ *   ALL         → call_result=true,  missed=true
+ *   EXCEPTION   → call_result=false, missed=true
+ *   WEEKLY_ONLY → call_result=false, missed=false, weekly_summary=true
+ * 주간 요약 수신(notify_weekly_summary)은 ALL/EXCEPTION 에서는 별개 의사표시이므로 건드리지 않는다.
+ */
+export async function updateNotifyLevel(raw: unknown): Promise<ActionResult> {
+  const parsed = notifyLevelSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, error: "알림 수준 값이 올바르지 않습니다." };
+  }
+  const level = parsed.data;
+
+  const auth = await requireGuardianId();
+  if (!auth.ok) return auth;
+
+  const patch: Record<string, unknown> = {
+    notify_level: level,
+    notify_call_result: level === "ALL",
+    notify_missed: level === "ALL" || level === "EXCEPTION",
+  };
+  if (level === "WEEKLY_ONLY") patch.notify_weekly_summary = true;
+
+  const supabase = createServerSupabase();
+  const { error } = await supabase.from("guardians").update(patch).eq("id", auth.id);
+
+  if (error) {
+    console.error("[settings] update level failed:", error.code, error.message);
     return { ok: false, error: "알림 설정 저장에 실패했습니다." };
   }
 

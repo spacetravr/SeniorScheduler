@@ -7,8 +7,10 @@ name: weekly-report
 
 on:
   schedule:
-    # 매주 월요일 09:00 KST 발송 → UTC 로는 -9h = 월요일 00:00 (CLAUDE.md 시간대 규칙: cron 은 UTC 해석)
-    - cron: "0 0 * * 1"
+    # 매주 **화요일 09:00 KST** 발송 → UTC 로는 -9h = 화요일 00:00
+    # (CLAUDE.md 시간대 규칙: cron 표현식은 UTC 로 해석되므로 KST 의도 시각을 -9h 변환해 등록)
+    # 월→화 변경 근거: 월요일 아침 메일함 경쟁이 심해 오픈율이 낮다 (docs/report-spec.md §2)
+    - cron: "0 0 * * 2"
   workflow_dispatch: # 수동 트리거
 
 jobs:
