@@ -2,174 +2,172 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>Senior Scheduler 카드뉴스 Set 01</title>
+<title>시니어 스케줄러 카드뉴스 Set 01 — 매일 그 전화</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
 <style>
+  /* 브랜드 토큰 — app/globals.css 와 동일 값. 이 파일 안에서는 이 변수만 사용한다. */
   :root{
     --navy:#1E3A5F; --navy-soft:#EAF0F7; --terra:#C2410B;
     --cream:#FBF7F0; --beige:#F0E7D8; --border:#E7DBC8;
-    --ink:#263140; --taupe:#6B5D4F; --sage:#5B7553;
+    --ink:#263140; --taupe:#6B5D4F;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{background:#888;font-family:'Pretendard Variable',Pretendard,sans-serif;word-break:keep-all;}
-  .card{width:1080px;height:1080px;position:relative;overflow:hidden;display:flex;flex-direction:column;padding:96px;margin:24px auto;}
-  .brand{font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:34px;letter-spacing:.02em;}
-  .pageno{position:absolute;bottom:56px;right:96px;font-size:26px;font-weight:600;opacity:.55;letter-spacing:.12em;}
-  .dots{display:flex;gap:12px;position:absolute;bottom:60px;left:96px;}
-  .dot{width:14px;height:14px;border-radius:50%;opacity:.25;}
-  .dot.on{opacity:1;}
-  .kicker{font-size:32px;font-weight:700;letter-spacing:.06em;margin-bottom:36px;}
-  h1{font-size:88px;line-height:1.28;font-weight:800;}
-  h2{font-size:76px;line-height:1.3;font-weight:800;}
-  .sub{font-size:40px;line-height:1.55;font-weight:500;}
+  body{
+    background:#9A9691;
+    font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;
+    word-break:keep-all;
+    -webkit-font-smoothing:antialiased;
+  }
+  .card{
+    width:1080px;height:1080px;position:relative;overflow:hidden;
+    display:flex;flex-direction:column;
+    padding:120px 110px 110px;margin:28px auto;
+    letter-spacing:-0.015em;
+  }
+  /* 워드마크 — 한글 우선, 작고 조용하게 */
+  .mark{position:absolute;top:64px;left:110px;font-size:26px;font-weight:700;letter-spacing:0.02em;opacity:.62;}
+  .num{position:absolute;bottom:64px;right:110px;font-size:24px;font-weight:600;opacity:.42;letter-spacing:.06em;}
 
-  /* C1 — 커버 (네이비) */
-  #c1{background:var(--navy);color:var(--cream);justify-content:space-between;}
-  #c1 .accentline{width:120px;height:10px;background:var(--terra);border-radius:5px;margin-bottom:48px;}
-  #c1 .sub{color:#D9E2EF;}
-  #c1 .dot{background:var(--cream);}
+  h1{font-size:96px;line-height:1.32;font-weight:800;letter-spacing:-0.03em;}
+  h2{font-size:78px;line-height:1.34;font-weight:800;letter-spacing:-0.03em;}
+  .lead{font-size:38px;line-height:1.7;font-weight:500;}
+  .rule{width:96px;height:8px;border-radius:4px;background:var(--terra);}
 
-  /* C2 — 공감 (크림) */
-  #c2{background:var(--cream);color:var(--ink);justify-content:center;gap:56px;}
-  #c2 .bubble{background:#fff;border:3px solid var(--border);border-radius:36px;padding:44px 52px;font-size:42px;line-height:1.5;font-weight:600;box-shadow:0 10px 30px -16px rgba(38,49,64,.18);max-width:820px;}
-  #c2 .bubble.me{align-self:flex-end;background:var(--navy-soft);border-color:#CBD9EA;}
-  #c2 .caption{font-size:40px;color:var(--taupe);font-weight:600;text-align:center;margin-top:24px;}
-  #c2 .caption b{color:var(--terra);}
-  #c2 .dot{background:var(--navy);}
-  #c2 .brand,#c2 .pageno{color:var(--navy);}
-  #c2 .brandpos{position:absolute;top:64px;left:96px;}
+  /* ── 01 공감 — 전면 텍스트, 아래쪽 정렬(비대칭) ───────────── */
+  #c1{background:var(--cream);color:var(--ink);justify-content:flex-end;}
+  #c1 .rule{margin-bottom:56px;}
+  #c1 h1 em{font-style:normal;color:var(--terra);}
+  #c1 .mark{color:var(--navy);}
+  #c1 .num{color:var(--taupe);}
 
-  /* C3 — 소개 (크림, 큰 카피) */
+  /* ── 02 문제 — 네이비 전면, 한 문장만 크게 ────────────────── */
+  #c2{background:var(--navy);color:var(--cream);justify-content:center;}
+  #c2 h2{font-size:88px;}
+  #c2 h2 em{font-style:normal;color:#F0A87C;}
+  #c2 .lead{margin-top:64px;color:#BFCEDF;max-width:760px;}
+  #c2 .mark,#c2 .num{color:var(--cream);}
+
+  /* ── 03 소개 — 큰 인용부호 + 한 줄 정의 ──────────────────── */
   #c3{background:var(--cream);color:var(--ink);justify-content:center;}
-  #c3 .em{color:var(--terra);}
-  #c3 .navy{color:var(--navy);}
-  #c3 .sub{color:var(--taupe);margin-top:52px;}
-  #c3 .dot{background:var(--navy);}
-  #c3 .brandpos{position:absolute;top:64px;left:96px;color:var(--navy);}
+  #c3 .quotemark{font-size:200px;line-height:.72;font-weight:800;color:var(--beige);margin-bottom:24px;}
+  #c3 .say{font-size:64px;line-height:1.45;font-weight:700;color:var(--navy);}
+  #c3 .lead{margin-top:72px;color:var(--taupe);padding-top:48px;border-top:3px solid var(--border);}
+  #c3 .lead b{color:var(--terra);font-weight:800;}
+  #c3 .mark{color:var(--navy);}
+  #c3 .num{color:var(--taupe);}
 
-  /* C4 — 3단계 (베이지) */
-  #c4{background:var(--beige);color:var(--ink);}
-  #c4 h2{font-size:64px;margin-bottom:64px;color:var(--navy);}
-  .step{display:flex;align-items:flex-start;gap:36px;padding:40px 0;border-bottom:3px solid var(--border);}
-  .step:last-of-type{border-bottom:none;}
-  .stepnum{flex:none;width:88px;height:88px;border-radius:50%;background:var(--navy);color:var(--cream);font-size:44px;font-weight:800;display:flex;align-items:center;justify-content:center;}
-  .step .t{font-size:46px;font-weight:800;margin-bottom:10px;}
-  .step .d{font-size:34px;line-height:1.5;color:var(--taupe);font-weight:500;}
-  #c4 .dot{background:var(--navy);}
-  #c4 .brandpos{position:absolute;top:64px;left:96px;color:var(--navy);}
-  #c4 .body{margin-top:96px;}
+  /* ── 04 작동 3단계 — 베이지, 왼쪽 큰 숫자 + 여백 ───────────── */
+  #c4{background:var(--beige);color:var(--ink);justify-content:center;}
+  #c4 .eyebrow{font-size:34px;font-weight:700;color:var(--taupe);margin-bottom:56px;letter-spacing:.01em;}
+  #c4 .step{display:flex;align-items:baseline;gap:44px;padding:38px 0;}
+  #c4 .step + .step{border-top:2px solid #DFCFB4;}
+  #c4 .n{flex:none;width:96px;font-size:64px;font-weight:800;color:#C9B694;line-height:1;}
+  #c4 .step.hi .n{color:var(--terra);}
+  #c4 .t{font-size:52px;font-weight:800;line-height:1.35;color:var(--navy);}
+  #c4 .d{font-size:32px;line-height:1.6;color:var(--taupe);margin-top:14px;font-weight:500;}
+  #c4 .mark{color:var(--navy);}
+  #c4 .num{color:var(--taupe);}
 
-  /* C5 — 안심 (네이비) */
-  #c5{background:var(--navy);color:var(--cream);}
-  #c5 h2{font-size:64px;margin-bottom:72px;}
-  .safe{display:flex;align-items:flex-start;gap:32px;padding:36px 0;}
-  .check{flex:none;width:72px;height:72px;border-radius:50%;background:var(--terra);display:flex;align-items:center;justify-content:center;}
-  .check svg{width:40px;height:40px;}
-  .safe .t{font-size:44px;font-weight:800;margin-bottom:8px;}
-  .safe .d{font-size:32px;line-height:1.5;color:#C6D2E2;font-weight:500;}
-  #c5 .dot{background:var(--cream);}
-  #c5 .brandpos{position:absolute;top:64px;left:96px;}
-  #c5 .body{margin-top:80px;}
+  /* ── 05 안심 — 네이비, 큰 선언 + 짧은 3문장 ────────────────── */
+  #c5{background:var(--navy);color:var(--cream);justify-content:center;}
+  #c5 h2{max-width:820px;}
+  #c5 h2 em{font-style:normal;color:#F0A87C;}
+  #c5 .lines{margin-top:76px;padding-top:56px;border-top:2px solid rgba(251,247,240,.22);}
+  #c5 .lines p{font-size:36px;line-height:1.6;color:#C9D6E5;font-weight:500;}
+  #c5 .lines p + p{margin-top:30px;}
+  #c5 .mark,#c5 .num{color:var(--cream);}
 
-  /* C6 — CTA (크림+네이비 카드) */
-  #c6{background:var(--cream);color:var(--ink);justify-content:center;align-items:center;text-align:center;}
-  #c6 h2{font-size:72px;color:var(--navy);margin-bottom:40px;}
-  #c6 .sub{color:var(--taupe);margin-bottom:72px;}
-  #c6 .btn{background:var(--terra);color:#fff;font-size:46px;font-weight:800;padding:40px 88px;border-radius:24px;box-shadow:0 14px 40px -14px rgba(194,65,11,.5);}
-  #c6 .url{margin-top:44px;font-size:36px;font-weight:700;color:var(--navy);letter-spacing:.02em;}
-  #c6 .note{margin-top:80px;font-size:26px;color:var(--taupe);}
-  #c6 .dot{background:var(--navy);}
-  #c6 .brandpos{position:absolute;top:64px;left:96px;color:var(--navy);}
+  /* ── 06 CTA — 크림, 강조 1점(버튼) ───────────────────────── */
+  #c6{background:var(--cream);color:var(--ink);justify-content:center;}
+  #c6 h2{color:var(--navy);}
+  #c6 .lead{margin-top:44px;color:var(--taupe);}
+  #c6 .btn{
+    display:inline-block;margin-top:80px;align-self:flex-start;
+    background:var(--terra);color:#fff;font-size:44px;font-weight:800;
+    padding:38px 76px;border-radius:20px;letter-spacing:-0.01em;
+  }
+  #c6 .url{margin-top:40px;font-size:34px;font-weight:700;color:var(--navy);letter-spacing:0;}
+  #c6 .note{position:absolute;left:110px;bottom:64px;font-size:24px;line-height:1.6;color:var(--taupe);max-width:640px;}
+  #c6 .mark{color:var(--navy);}
+  #c6 .num{color:var(--taupe);}
 </style>
 </head>
 <body>
 
-<!-- 1. 커버 -->
+<!-- 01 공감 -->
 <section class="card" id="c1">
-  <div class="brand">Senior Scheduler</div>
-  <div>
-    <div class="accentline"></div>
-    <h1>매일 부모님께<br>안부 전화,<br>언제까지 챙길 수<br>있을까요?</h1>
-  </div>
-  <div class="sub">바쁜 당신 대신, 전화 한 통이 부모님의 하루를 챙깁니다.</div>
-  <div class="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-  <div class="pageno">01 / 06</div>
+  <div class="mark">시니어 스케줄러</div>
+  <div class="rule"></div>
+  <h1>매일 전화해서<br>“약 드셨어요?”<br>여쭤보는 거,<br><em>언제까지 할 수<br>있을까요.</em></h1>
+  <div class="num">01</div>
 </section>
 
-<!-- 2. 공감 -->
+<!-- 02 문제 -->
 <section class="card" id="c2">
-  <div class="brand brandpos">Senior Scheduler</div>
-  <div class="bubble">"엄마, 오늘 혈압약 드셨어요?"</div>
-  <div class="bubble me">"…아 맞다, 오늘도 여쭤본다는 걸 깜빡했네."</div>
-  <div class="caption">회의, 야근, 육아까지 — 마음은 늘 있는데<br><b>매일 챙겨 전화하는 건 생각보다 어렵습니다.</b></div>
-  <div class="dots"><span class="dot"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-  <div class="pageno">02 / 06</div>
+  <div class="mark">시니어 스케줄러</div>
+  <h2>마음이 없어서가<br>아니라, <em>시간이<br>없어서였습니다.</em></h2>
+  <div class="lead">회의 중에, 퇴근길에, 아이 재우다가.<br>오늘도 그렇게 하루가 지나갔죠.</div>
+  <div class="num">02</div>
 </section>
 
-<!-- 3. 소개 -->
+<!-- 03 소개 -->
 <section class="card" id="c3">
-  <div class="brand brandpos">Senior Scheduler</div>
-  <h2><span class="navy">앱 설치 없이,</span><br><span class="em">전화 한 통</span><span class="navy">으로</span><br><span class="navy">부모님 일정을 챙깁니다</span></h2>
-  <div class="sub">복약·병원 일정을 등록해 두면, 약속한 시간에<br>부모님이 평소 쓰시던 전화로 안부 전화가 걸려갑니다.<br>부모님은 받아서 대답만 하시면 돼요.</div>
-  <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-  <div class="pageno">03 / 06</div>
+  <div class="mark">시니어 스케줄러</div>
+  <div class="quotemark">“</div>
+  <div class="say">어머니, 아침 혈압약<br>드셨는지 확인 전화<br>드렸어요.”</div>
+  <div class="lead">등록해 두신 시간에, <b>부모님이 늘 쓰시던 전화기로</b><br>확인 전화가 걸려갑니다. 부모님은 받아서<br>대답만 하시면 됩니다.</div>
+  <div class="num">03</div>
 </section>
 
-<!-- 4. 3단계 -->
+<!-- 04 작동 3단계 -->
 <section class="card" id="c4">
-  <div class="brand brandpos">Senior Scheduler</div>
-  <div class="body">
-    <h2>이렇게 동작해요</h2>
-    <div class="step">
-      <div class="stepnum">1</div>
-      <div><div class="t">일정 등록</div><div class="d">복약·병원·식사 — 챙기고 싶은 일정과 시간을 웹에서 등록합니다.</div></div>
-    </div>
-    <div class="step">
-      <div class="stepnum">2</div>
-      <div><div class="t">자동 안부 전화</div><div class="d">약속한 시간에 부모님 전화로 안내 전화가 걸려갑니다. 못 받으시면 자동으로 다시 걸어요.</div></div>
-    </div>
-    <div class="step">
-      <div class="stepnum">3</div>
-      <div><div class="t">결과 리포트</div><div class="d">약을 드셨는지, 오늘 기분은 어떠신지 — 통화 결과를 요약해 알려드립니다.</div></div>
+  <div class="mark">시니어 스케줄러</div>
+  <div class="eyebrow">해야 할 일은 하나, 일정 등록뿐입니다</div>
+  <div class="step hi">
+    <div class="n">1</div>
+    <div>
+      <div class="t">일정을 등록합니다</div>
+      <div class="d">복약·병원 일정과 시간을 웹에서 한 번만 등록해 두세요.</div>
     </div>
   </div>
-  <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>
-  <div class="pageno">04 / 06</div>
+  <div class="step">
+    <div class="n">2</div>
+    <div>
+      <div class="t">그 시간에 전화가 갑니다</div>
+      <div class="d">못 받으시면 잠시 뒤 다시 걸어드립니다.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="n">3</div>
+    <div>
+      <div class="t">결과가 정리되어 옵니다</div>
+      <div class="d">어떻게 답하셨는지 한 줄 요약으로 확인하세요.</div>
+    </div>
+  </div>
+  <div class="num">04</div>
 </section>
 
-<!-- 5. 안심 -->
+<!-- 05 안심 -->
 <section class="card" id="c5">
-  <div class="brand brandpos">Senior Scheduler</div>
-  <div class="body">
-    <h2>안심하고 맡기실 수 있도록</h2>
-    <div class="safe">
-      <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
-      <div><div class="t">음성 녹음을 저장하지 않아요</div><div class="d">통화 내용은 텍스트 요약으로만 정리해 보호자에게 전달합니다.</div></div>
-    </div>
-    <div class="safe">
-      <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
-      <div><div class="t">부모님 동의 후에만 전화해요</div><div class="d">첫 통화에서 부모님 본인의 동의를 받은 뒤에 정기 안부 전화를 시작합니다.</div></div>
-    </div>
-    <div class="safe">
-      <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
-      <div><div class="t">억지로 판단하지 않아요</div><div class="d">확실하지 않은 답변은 "확인 필요"로 정직하게 알려드립니다. 의료 조언은 제공하지 않습니다.</div></div>
-    </div>
+  <div class="mark">시니어 스케줄러</div>
+  <h2>부모님 동의를<br>받은 다음에만<br><em>전화합니다.</em></h2>
+  <div class="lines">
+    <p>첫 통화에서 부모님 본인의 동의를 확인합니다.</p>
+    <p>통화 녹음은 저장하지 않고, 텍스트 요약만 남깁니다.</p>
+    <p>AI가 거는 전화라는 사실을 통화에서 그대로 밝힙니다.</p>
   </div>
-  <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot on"></span><span class="dot"></span></div>
-  <div class="pageno">05 / 06</div>
+  <div class="num">05</div>
 </section>
 
-<!-- 6. CTA -->
+<!-- 06 CTA -->
 <section class="card" id="c6">
-  <div class="brand brandpos">Senior Scheduler</div>
-  <h2>베타 기간,<br>무료로 시작해 보세요</h2>
-  <div class="sub">지금 사전등록하시면 정식 출시 소식을<br>이메일로 가장 먼저 알려드립니다.</div>
+  <div class="mark">시니어 스케줄러</div>
+  <h2>자녀가 못 챙기는<br>시간을 거들겠습니다.</h2>
+  <div class="lead">베타 사전등록을 받고 있습니다.<br>준비되면 이메일로 가장 먼저 알려드릴게요.</div>
   <div class="btn">사전등록 하러 가기</div>
   <div class="url">seniorscheduler.vercel.app</div>
-  <div class="note">결제 정보를 요구하지 않으며, 언제든 수신 거부할 수 있습니다.</div>
-  <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot on"></span></div>
-  <div class="pageno">06 / 06</div>
+  <div class="note">결제 정보를 받지 않습니다. 의료 조언을 제공하지 않으며, 긴급 구조를 대행하지 않습니다.</div>
+  <div class="num">06</div>
 </section>
 
 </body>
