@@ -129,7 +129,7 @@ export default function HomePage() {
           </p>
         </section>
 
-        {/* 3. 신뢰 4배지 — 홈에서 가장 중요한 블록 */}
+        {/* 3. 신뢰 배지 — 홈에서 가장 중요한 블록 */}
         <section className="bg-surface">
           <div className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
             <div className="flex flex-col items-center gap-3 text-center">

@@ -72,7 +72,7 @@ type Principle = {
 
 /**
  * 지키는 원칙 — 이 페이지의 핵심 블록.
- * TrustBadges(4배지)가 요약이라면, 여기는 그 배경까지 서술하는 확장판이다.
+ * TrustBadges(신뢰 배지)가 요약이라면, 여기는 그 배경까지 서술하는 확장판이다.
  */
 const PRINCIPLES: Principle[] = [
   {
@@ -206,7 +206,7 @@ export default function AboutPage() {
             </p>
           </div>
 
-          {/* 신뢰 4배지 축약형 — 아래 서술형 원칙의 요약 (공용 컴포넌트 재사용) */}
+          {/* 신뢰 배지 축약형 — 아래 서술형 원칙의 요약 (공용 컴포넌트 재사용) */}
           <TrustBadges variant="compact" className="mt-10" />
 
           <ol className="mt-10 flex flex-col gap-4">
