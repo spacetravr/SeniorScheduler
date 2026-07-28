@@ -1,108 +1,104 @@
 /**
- * 랜딩 v2 (`/`) — 설문과 함께 배포되는 출시 직전형 홈페이지.
- * 글 최소화 · 큰 글씨 · 넓은 여백. 데스크톱 풀블리드 히어로 + max-w-6xl 섹션, 모바일 완전 반응형.
- * 인터랙션·추적은 클라이언트 컴포넌트(PreregisterButton)에 위임하고, 나머지는 서버 렌더.
- * 브랜드: Senior Scheduler.
+ * 홈페이지 (`/`) — 회사·서비스의 얼굴 (docs/site-structure.md §2).
+ * 무엇을 하는 곳인지 30초 안에. 팔지 않고 소개한다 — 스크롤 3~4화면.
+ * 제품 설명의 본진은 `/service` 로 이관됨. 이 경로는 외부 링크가 살아 있으므로 200 유지·리다이렉트 금지.
+ *
+ * [CTA 추적] 이 페이지는 **추적되는 PreregisterButton**을 사용한다.
+ *   이유: 검색·직접 유입의 원 진입점이며, VIEW는 `/`와 `/service`에서만 보낸다는 규칙(§5-1).
+ *   (VIEW는 useCtaTracking이 sessionStorage 플래그로 세션당 1회만 전송 — 중복 집계 없음.)
  */
 import Image from "next/image";
+import Link from "next/link";
+import type { Metadata } from "next";
 import { PreregisterButton } from "@/components/marketing/PreregisterButton";
-import { FaqSection } from "@/components/marketing/FaqSection";
-import { FAQ_ITEMS } from "@/components/marketing/faqData";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
-import { ReportPreviewCard } from "@/components/marketing/ReportPreviewCard";
+import { TrustBadges } from "@/components/marketing/TrustBadges";
 
-/** FAQPage 구조화 데이터(JSON-LD). 화면 FAQ와 동일한 FAQ_ITEMS 단일 소스에서 생성. */
-const faqJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: FAQ_ITEMS.map((item) => ({
-    "@type": "Question",
-    name: item.question,
-    acceptedAnswer: {
-      "@type": "Answer",
-      text: item.answer,
-    },
-  })),
+const HOME_TITLE = "부모님 복약·안부 전화 자동으로 | Senior Scheduler";
+const HOME_DESCRIPTION =
+  "Senior Scheduler는 보호자가 등록한 시간에 부모님 일반 전화로 안부·복약 확인 전화를 걸고, 결과를 정직한 리포트로 전해 드리는 서비스입니다. 앱 설치 없이, 동의하신 뒤에만 전화드립니다.";
+const OG_IMAGE = "/images/hero-senior-couple.jpg";
+
+export const metadata: Metadata = {
+  title: {
+    absolute: HOME_TITLE,
+  },
+  description: HOME_DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    type: "website",
+    locale: "ko_KR",
+    siteName: "Senior Scheduler",
+    url: "/",
+    images: [
+      {
+        url: OG_IMAGE,
+        alt: "전화를 받으며 환하게 웃고 계신 어머님과 아버님",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    images: [OG_IMAGE],
+  },
 };
 
-const STEPS = [
+/** 리포트 미리보기 요약 2종 — 자세한 예시 카드는 `/service` 에 있다. */
+const REPORT_GLANCE = [
   {
-    step: "1",
-    title: "웹에서 일정 등록",
-    body: "복약·병원 등 일정을 보호자가 웹에서 간단히 등록해요.",
+    status: "복약 완료",
+    tone: "primary" as const,
+    summary:
+      "혈압약을 방금 챙겨 드셨다고 하셨어요. 오늘은 경로당에 다녀오실 예정이래요.",
   },
   {
-    step: "2",
-    title: "예약 시간에 자동 전화",
-    body: "부모님의 평소 쓰던 일반 전화로 안내 전화가 걸려가요.",
-  },
-  {
-    step: "3",
-    title: "결과를 리포트로",
-    body: "부모님의 응답을 정리해 보호자에게 결과를 알려드려요.",
+    status: "확인 필요",
+    tone: "accent" as const,
+    summary:
+      "여쭤봤지만 확실한 답을 듣지 못했어요. 확인이 필요해요.",
   },
 ];
 
-const BENEFITS = [
-  {
-    label: "보호자(자녀)",
-    tagline: "어려운 조작은 익숙한 보호자가 맡습니다.",
-    points: [
-      "웹에서 복약·병원 일정을 등록",
-      "통화가 끝나면 결과 리포트 도착",
-      "부모님의 이행률을 한눈에 확인",
-    ],
-  },
-  {
-    label: "부모님(시니어)",
-    tagline: "배울 것이 하나도 없습니다.",
-    points: [
-      "설치할 것도, 조작할 것도 없어요",
-      "전화가 울리면 받으시면 돼요",
-      "편하게 대답하시면 그걸로 끝",
-    ],
-  },
-];
+const CONTACT_EMAIL = "spacetr17@khu.ac.kr";
 
-export default function LandingPage() {
+export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
-      {/* FAQPage 구조화 데이터 */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-      />
-
-      {/* 헤더 */}
+      {/* 헤더 — 추적 CTA */}
       <SiteHeader cta={<PreregisterButton size="sm" />} />
 
       <main className="flex flex-col">
-        {/* 히어로 */}
+        {/* 1. 히어로 */}
         <section className="bg-gradient-to-b from-surface to-bg">
           <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-5 py-16 sm:px-8 lg:flex-row lg:gap-14 lg:py-24">
-            <div className="flex flex-1 flex-col items-center gap-6 text-center">
-              <span className="rounded-base bg-accent/15 px-3 py-1 text-sm font-semibold text-accent">
+            <div className="flex flex-1 flex-col items-center gap-6 text-center lg:items-start lg:text-left">
+              <span className="font-brand text-sm font-bold tracking-tight text-primary">
                 Senior Scheduler
               </span>
               <h1 className="text-4xl font-bold leading-[1.15] tracking-tight sm:text-5xl lg:text-6xl">
-                부모님의 하루,
+                부모님의 하루는
                 <br />
-                전화 한 통으로
-                <br />
-                대신 챙겨 드려요
+                그대로, 확인은 저희가
               </h1>
               <p className="max-w-xl text-lg font-medium leading-relaxed text-text-muted sm:text-xl">
-                매일 전화로 &lsquo;약 드셨어요?&rsquo; 확인하기, 언제까지
-                이어갈 수 있을까요? 일정을 등록해 두면 예약한 시간에 저희가
-                대신 안부 전화를 걸어 확인하고 결과를 알려드립니다.
+                등록해 두신 시간에 부모님의 일반 전화로 안부와 일정을 여쭙고,
+                결과를 보호자님께 정리해 전해 드립니다.
               </p>
-              <div className="w-full pt-2 sm:w-auto">
-                <PreregisterButton />
+              <div className="flex w-full flex-col gap-3 pt-2 sm:w-auto sm:flex-row sm:items-center">
+                {/* 주 CTA는 사전등록(추적), 보조는 서비스 알아보기(내부 이동) */}
+                <PreregisterButton label="사전등록하기" />
+                <Link
+                  href="/service"
+                  className="inline-flex w-full items-center justify-center rounded-base border border-primary/40 px-6 py-4 text-base font-semibold text-primary transition-colors hover:bg-primary-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-auto sm:min-w-48"
+                >
+                  서비스 알아보기
+                </Link>
               </div>
-              <p className="text-sm text-text-muted">
-                앱 설치 없이, 부모님은 걸려온 전화만 받으시면 됩니다.
-              </p>
             </div>
 
             <div className="w-full flex-1">
@@ -120,125 +116,104 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* 3단계 프로세스 */}
-        <section className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
-          <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">
-            이렇게 작동합니다
+        {/* 2. 한 문단 소개 */}
+        <section className="mx-auto w-full max-w-3xl px-5 py-16 text-center sm:px-8 sm:py-20">
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            저희가 하는 일
           </h2>
-          <div className="mt-12 grid gap-6 sm:grid-cols-3">
-            {STEPS.map((s) => (
-              <div
-                key={s.step}
-                className="flex flex-col items-center gap-4 rounded-base border border-border bg-bg p-8 text-center shadow-card"
-              >
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-2xl font-bold text-bg shadow-sm">
-                  {s.step}
-                </span>
-                <h3 className="text-xl font-bold">{s.title}</h3>
-                <p className="leading-relaxed text-text-muted">{s.body}</p>
-              </div>
-            ))}
-          </div>
+          <p className="mt-6 text-lg leading-relaxed text-text-muted sm:text-xl">
+            멀리 계신 부모님께 매일 전화로 여쭙고 싶은 마음은 누구나 같습니다.
+            저희는 그 마음을 거들어, 보호자님이 등록해 두신 일정에 맞춰 부모님께
+            확인 전화를 걸어 드립니다. 부모님은 앱도 설치도 필요 없이 걸려온
+            전화를 받으시면 되고, 보호자님은 결과를 리포트로 확인하시면 됩니다.
+          </p>
         </section>
 
-        {/* 보호자 / 시니어 관점 혜택 */}
+        {/* 3. 신뢰 4배지 — 홈에서 가장 중요한 블록 */}
         <section className="bg-surface">
-          <div className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
-            <div className="grid items-center gap-12 lg:grid-cols-2">
-              <div className="order-2 grid gap-6 lg:order-1">
-                {BENEFITS.map((b) => (
-                  <div
-                    key={b.label}
-                    className="flex flex-col gap-3 rounded-base border border-border bg-bg p-6 shadow-card"
-                  >
-                    <span className="text-sm font-bold text-primary">
-                      {b.label}
-                    </span>
-                    <p className="text-lg font-semibold leading-snug">
-                      {b.tagline}
-                    </p>
-                    <ul className="flex flex-col gap-2">
-                      {b.points.map((p) => (
-                        <li
-                          key={p}
-                          className="flex items-start gap-2 leading-relaxed text-text-muted"
-                        >
-                          <span className="mt-0.5 text-primary" aria-hidden>
-                            ✓
-                          </span>
-                          <span>{p}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-
-              <div className="order-1 flex flex-col gap-6 lg:order-2">
-                <h2 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-                  앱이 아니라,
-                  <br />
-                  진짜 전화입니다
-                </h2>
-                <p className="text-lg leading-relaxed text-text-muted">
-                  두 분의 경험은 이렇게 다릅니다. 보호자는 웹으로 챙기고,
-                  부모님은 늘 쓰시던 전화를 받기만 하시면 됩니다.
-                </p>
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-base border border-border shadow-card">
-                  <Image
-                    src="/images/family.jpg"
-                    alt="손녀와 함께 사진을 찍으며 웃는 할머니"
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                    className="object-cover"
-                  />
-                </div>
-              </div>
+          <div className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                지키는 원칙
+              </h2>
+              <p className="max-w-xl leading-relaxed text-text-muted">
+                부모님께 걸려가는 전화이기에, 무엇을 지키는지 먼저 밝힙니다.
+              </p>
             </div>
+            <TrustBadges className="mt-10" />
           </div>
         </section>
 
-        {/* 리포트 미리보기 */}
-        <section className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              통화가 끝나면,
-              <br className="sm:hidden" /> 이런 리포트가 도착해요
+        {/* 4. 리포트 미리보기 2종 요약 */}
+        <section className="mx-auto w-full max-w-4xl px-5 py-16 sm:px-8 sm:py-20">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              통화 결과는 이렇게 전해 드려요
             </h2>
-            <p className="max-w-xl text-lg leading-relaxed text-text-muted">
-              부모님과의 통화를 요약해 보호자에게 알려드리고, 필요하면 대화
-              내용까지 그대로 읽어 보실 수 있어요.
+            <p className="max-w-xl leading-relaxed text-text-muted">
+              확인이 안 되면 억지로 판단하지 않고,{" "}
+              <strong className="font-bold text-text">
+                &lsquo;확인 필요&rsquo;라고 그대로
+              </strong>{" "}
+              알려드립니다.
             </p>
           </div>
 
-          <div className="mx-auto mt-12 w-full max-w-md">
-            <ReportPreviewCard />
-          </div>
+          <ul className="mt-10 grid gap-4 sm:grid-cols-2">
+            {REPORT_GLANCE.map((r) => (
+              <li
+                key={r.status}
+                className="flex flex-col gap-3 rounded-base border border-border bg-bg p-6 shadow-card"
+              >
+                <span
+                  className={`inline-flex w-fit items-center rounded-base px-2.5 py-1 text-xs font-semibold leading-none text-bg ${
+                    r.tone === "primary" ? "bg-primary" : "bg-accent"
+                  }`}
+                >
+                  {r.status}
+                </span>
+                <p className="leading-relaxed text-text-muted">{r.summary}</p>
+              </li>
+            ))}
+          </ul>
+
+          <p className="mt-8 text-center">
+            <Link
+              href="/service"
+              className="font-semibold text-primary underline underline-offset-4"
+            >
+              리포트 예시 자세히 보기
+            </Link>
+          </p>
         </section>
 
-        {/* 자주 묻는 질문 (FAQ) */}
+        {/* 5. 소식·문의 */}
         <section className="bg-surface">
-          <FaqSection />
-        </section>
-
-        {/* 마지막 CTA 배너 */}
-        <section className="px-5 py-16 sm:px-8 sm:py-20">
-          <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 rounded-base border border-primary/10 bg-primary-soft px-5 py-14 text-center shadow-card sm:px-8 sm:py-16">
-            <h2 className="text-3xl font-bold leading-tight tracking-tight text-text sm:text-4xl">
-              오늘부터 부모님께
-              <br className="sm:hidden" /> 따뜻한 전화를 시작해 보세요
+          <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-5 px-5 py-16 text-center sm:px-8 sm:py-20">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              지금은 베타를 준비하고 있습니다
             </h2>
             <p className="max-w-xl text-lg leading-relaxed text-text-muted">
-              정식 출시되면 이메일로 가장 먼저 안내드릴게요.
+              정식 출시를 준비 중이며, 사전등록해 주시면 준비되는 대로 이메일로
+              가장 먼저 안내드릴게요. 제휴·취재·문의도 언제든 환영합니다.
             </p>
             <div className="w-full sm:w-auto">
-              <PreregisterButton />
+              <PreregisterButton label="사전등록하기" />
             </div>
+            <p className="text-sm text-text-muted">
+              문의:{" "}
+              <a
+                href={`mailto:${CONTACT_EMAIL}`}
+                className="font-semibold text-primary underline underline-offset-4"
+              >
+                {CONTACT_EMAIL}
+              </a>
+            </p>
           </div>
         </section>
       </main>
 
-      {/* 푸터 */}
+      {/* 6. 푸터 */}
       <SiteFooter />
     </div>
   );

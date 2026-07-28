@@ -8,6 +8,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { PreregisterForm } from "@/components/marketing/PreregisterForm";
+import { TrustBadges } from "@/components/marketing/TrustBadges";
 
 const PREREGISTER_TITLE = "사전등록";
 const PREREGISTER_DESCRIPTION =
@@ -51,9 +52,10 @@ export default function PreregisterPage() {
     <main className="grid min-h-screen lg:grid-cols-2">
       {/* 왼쪽: 브랜드 패널 */}
       <section className="flex flex-col items-center justify-between gap-10 bg-gradient-to-br from-surface via-surface to-accent/10 px-6 py-12 text-center sm:px-10 lg:px-14 lg:py-16">
+        {/* 이탈 최소화 — 브랜드 링크는 홈이 아니라 제품 설명(/service)으로 연결(§2). */}
         <Link
-          href="/"
-          className="text-2xl font-bold tracking-tight sm:text-3xl"
+          href="/service"
+          className="font-brand text-2xl font-bold tracking-tight sm:text-3xl"
         >
           Senior Scheduler
         </Link>
@@ -108,8 +110,12 @@ export default function PreregisterPage() {
       <section className="flex items-center justify-center bg-bg px-6 py-12 sm:px-10 lg:px-14">
         <div className="w-full max-w-md">
           <PreregisterForm />
+
+          {/* 전환 직전 불안 해소 — 신뢰 4배지 축약형(§2). */}
+          <TrustBadges variant="compact" className="mt-6" />
+
           <p className="mt-6 text-center text-base">
-            <Link href="/" className="font-medium text-text-muted">
+            <Link href="/service" className="font-medium text-text-muted">
               ← 서비스 소개로 돌아가기
             </Link>
           </p>
