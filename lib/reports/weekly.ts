@@ -22,6 +22,27 @@ export function weeklyWindowKst(now: Date): { startIso: string; endIso: string }
   return { startIso, endIso };
 }
 
+/**
+ * 주간 윈도우 + **KST 달력 경계 표기**(양 끝 포함) — buildDigest(range) 입력용.
+ * 반개구간 [startIso, endIso) 의 마지막 포함일은 endYmd = (오늘 - 1일).
+ * 화요일 09:00 KST 실행 시 직전 화~월 7일을 정확히 커버한다.
+ */
+export function weeklyRangeKst(now: Date): {
+  startIso: string;
+  endIso: string;
+  startYmd: string;
+  endYmd: string;
+} {
+  const { startIso, endIso } = weeklyWindowKst(now);
+  const todayYmd = formatInTimeZone(now, KST, "yyyy-MM-dd");
+  return {
+    startIso,
+    endIso,
+    startYmd: addDaysYmd(todayYmd, -7),
+    endYmd: addDaysYmd(todayYmd, -1),
+  };
+}
+
 /** "YYYY-MM-DD" 문자열 달력 가감(정오 앵커로 DST/TZ 영향 배제). */
 function addDaysYmd(ymd: string, delta: number): string {
   const [y, m, d] = ymd.split("-").map(Number);

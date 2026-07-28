@@ -1,16 +1,20 @@
 /**
- * 설정 (/app/settings) — 로그인 이메일 표시 + 로그아웃(실동작). 알림 설정은 준비 중(placeholder).
+ * 설정 (/app/settings) — 계정·비밀번호·크레딧·알림 레벨·온보딩 설문 재작성.
+ * 알림은 boolean 토글 3종 대신 **레벨 3지선다**(NotifyLevelForm)로 통합했다 (docs/report-spec.md §3).
+ * 초기 표시값은 기존 boolean 설정에서 유도한다(components/app/notifyLevel.ts, 순수 함수).
  */
 import Link from "next/link";
 import {
   Coins,
   ChevronRight,
+  ClipboardList,
   CalendarDays,
   CalendarRange,
   CalendarClock,
 } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
-import { NotifySettingsForm } from "@/components/app/NotifySettingsForm";
+import { NotifyLevelForm } from "@/components/app/NotifyLevelForm";
+import { toNotifyLevel } from "@/components/app/notifyLevel";
 import { LogoutButton } from "@/components/app/LogoutButton";
 import { PasswordChangeForm } from "@/components/app/PasswordChangeForm";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -112,7 +116,33 @@ export default async function SettingsPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold">알림</h2>
-        <NotifySettingsForm initial={notifySettings} />
+        <NotifyLevelForm initial={toNotifyLevel(notifySettings)} />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold">맞춤 설문</h2>
+        <Link
+          href="/app/onboarding"
+          className="flex items-center gap-3 rounded-base border border-border bg-bg p-4 shadow-card transition-colors hover:border-primary"
+        >
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary"
+            aria-hidden
+          >
+            <ClipboardList className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="font-medium">시작 설문 다시 작성하기</span>
+            <span className="break-keep text-sm text-text-muted">
+              부모님 연세·걱정거리·통화 시간대를 언제든 수정하실 수 있어요
+            </span>
+          </div>
+          <ChevronRight
+            className="h-5 w-5 shrink-0 text-text-muted"
+            aria-hidden
+            strokeWidth={2}
+          />
+        </Link>
       </section>
 
       <section className="flex flex-col gap-3">

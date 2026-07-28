@@ -1,34 +1,41 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAdminClient } from "@/lib/supabase/admin";
-import { selectEmailBackend } from "@/lib/email";
-import { weeklyWindowKst, composeWeeklyDigest } from "@/lib/reports/weekly";
-import type { ReportItem } from "@/lib/reports/summary";
+import { buildDigest, type DigestInput } from "@/lib/reports/digest";
+import { renderReportEmail } from "@/lib/reports/render/email";
+import { weeklyRangeKst } from "@/lib/reports/weekly";
+import { routeNotify, parseNotifyLevel } from "@/lib/notify";
+import { reportLinks } from "@/lib/notify/links";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/cron/weekly-report  (매주 월요일 09:00 KST GitHub Actions cron 이 호출)
+ * POST /api/cron/weekly-report  (매주 **화요일 09:00 KST** GitHub Actions cron 이 호출)
  *
- * notify_weekly_summary=true 인 보호자에게 지난 7일(KST) 통화 리포트 요약 메일을 발송한다.
+ * notify_weekly_summary=true 인 보호자에게 지난 7일(KST) 리포트 다이제스트 메일을 발송한다.
+ *
+ * 파이프라인: DB → DigestInput[] → `buildDigest("WEEK")`(집계·판정 단일 소스)
+ *             → `renderReportEmail`(600px 인라인 HTML) → `routeNotify`(레벨 라우터).
+ * 주간 요약은 알림 레벨과 무관하게 수신 동의자에게 보낸다(WEEKLY_ONLY 포함 — report-spec §3).
+ *
  * 인증: Authorization: Bearer ${CRON_SECRET} (dispatch-calls 라우트와 동일). 미설정/불일치 → 401.
- * 서버 write/read 는 admin(secret key, RLS 우회). 시간대(CLAUDE.md): 집계 경계는 weeklyWindowKst
- * 가 Asia/Seoul 명시로 계산.
+ * 서버 read 는 admin(secret key, RLS 우회). 시간대(CLAUDE.md): 집계 경계는 weeklyRangeKst 가
+ * Asia/Seoul 명시로 계산.
  *
- * RESEND_API_KEY 미설정 시 DisabledAdapter 가 발송을 skip 하므로(무해) 워크플로는 상시 활성 가능.
- * PII: 수신 이메일 주소는 로그에 남기지 않는다.
- * 가드레일 1: 메일 본문 하단에 의료 조언 미제공 고지(MEDICAL_DISCLAIMER) 고정 포함(composeWeeklyDigest).
+ * RESEND_API_KEY 미설정 시 EMAIL 어댑터가 skipped 를 돌려주므로(무해) 워크플로는 상시 활성 가능.
+ * PII: 수신 이메일 주소·통화 요약 본문은 로그에 남기지 않는다.
+ * 가드레일 1: 메일 하단에 의료 고지 + 119 대체 아님 고지 고정(renderReportEmail).
  */
 
-/** guardian.id → 그 보호자의 이번 주 ReportItem[] (senior_id 경유 그룹핑). */
+/** guardian.id → 그 보호자의 이번 주 DigestInput[] (senior_id 경유 그룹핑). */
 async function loadWeeklyItemsByGuardian(
   supabase: SupabaseClient,
   guardianIds: string[],
   startIso: string,
   endIso: string,
-): Promise<Map<string, ReportItem[]>> {
-  const byGuardian = new Map<string, ReportItem[]>();
+): Promise<Map<string, DigestInput[]>> {
+  const byGuardian = new Map<string, DigestInput[]>();
   for (const id of guardianIds) byGuardian.set(id, []);
 
   // 대상 보호자들의 seniors → seniorId 별 {이름, 소속 보호자}.
@@ -94,15 +101,16 @@ async function loadWeeklyItemsByGuardian(
     const sched = Array.isArray(sess.schedules) ? sess.schedules[0] : sess.schedules;
     const title = (sched?.title as string | undefined) ?? "";
 
-    const item: ReportItem = {
+    const item: DigestInput = {
       id: row.id as string,
       sessionId: (row.session_id as string) ?? null,
       createdAt: row.created_at as string,
-      status: row.adherence_status as ReportItem["status"],
+      status: row.adherence_status as DigestInput["status"],
       summary: (row.summary as string) ?? "",
       moodFlag: Boolean(row.mood_flag),
       healthFlag: Boolean(row.health_flag),
       seniorName: info.name,
+      seniorId,
       title,
     };
     byGuardian.get(info.guardianId)?.push(item);
@@ -143,18 +151,18 @@ export async function POST(req: Request) {
 
   const supabase = getAdminClient();
   const now = new Date();
-  const { startIso, endIso } = weeklyWindowKst(now);
+  const { startIso, endIso, startYmd, endYmd } = weeklyRangeKst(now);
 
-  // 주간 요약 수신 보호자 조회.
+  // 주간 요약 수신 보호자 조회 (레벨과 무관 — 주간은 별도 동의로만 통제).
   const { data: gRows, error: gErr } = await supabase
     .from("guardians")
-    .select("id, email")
+    .select("id, email, notify_level")
     .eq("notify_weekly_summary", true);
   if (gErr) {
     console.error("[weekly] guardians:", gErr.code, gErr.message);
     return NextResponse.json({ error: "query_failed" }, { status: 500 });
   }
-  const guardians = (gRows ?? []) as { id: string; email: string | null }[];
+  const guardians = (gRows ?? []) as { id: string; email: string | null; notify_level?: string }[];
   if (guardians.length === 0) {
     return NextResponse.json({ ok: true, sent: 0, skipped: 0, failed: 0 });
   }
@@ -166,16 +174,15 @@ export async function POST(req: Request) {
     endIso,
   );
 
-  const email = selectEmailBackend();
+  const links = reportLinks();
   let sent = 0;
   let skipped = 0;
   let failed = 0;
 
   for (const g of guardians) {
     const items = itemsByGuardian.get(g.id) ?? [];
-    const digest = composeWeeklyDigest(items);
-    if (!digest) {
-      // 이번 주 리포트 없음 — 발송 대상 아님.
+    if (items.length === 0) {
+      // 이번 주 리포트 없음 — 빈 메일은 보내지 않는다(알림 피로 방지).
       skipped += 1;
       continue;
     }
@@ -186,14 +193,24 @@ export async function POST(req: Request) {
       skipped += 1;
       continue;
     }
-    const res = await email.send({ to, subject: digest.subject, text: digest.text });
-    if (res.skipped) {
-      skipped += 1;
-    } else if (res.ok) {
-      sent += 1;
-    } else {
-      failed += 1;
-    }
+
+    const digest = buildDigest("WEEK", items, { startYmd, endYmd });
+    const mail = renderReportEmail(digest, links);
+    const results = await routeNotify({
+      kind: "WEEKLY_DIGEST",
+      level: parseNotifyLevel(g.notify_level),
+      tone: digest.tone,
+      recipients: { EMAIL: to },
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
+      linkUrl: links.reportUrl,
+    });
+
+    // 채널별 결과 집계 — 한 채널이라도 sent 면 sent 로 센다.
+    if (results.some((r) => r.status === "sent")) sent += 1;
+    else if (results.some((r) => r.status === "failed")) failed += 1;
+    else skipped += 1;
   }
 
   return NextResponse.json({ ok: true, sent, skipped, failed });

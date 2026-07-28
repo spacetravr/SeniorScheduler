@@ -1,33 +1,31 @@
 "use client";
 
 /**
- * 리포트 뷰 — 일 / 주 / 월 전환 탭. 데이터는 서버 페이지에서 내려주고,
- * 여기서 KST 달력 기준으로 집계·전환한다 (lib 미수정, 순수 함수 집계).
- * 날짜 그룹핑·집계·요약 텍스트는 reportSummary.ts의 순수 헬퍼 사용
- *   → kstYmd 기반이라 UTC 문자열 직접 slice 금지(과거 9시간 밀림 버그 방지).
- * 첫 진입 텍스트 최소화: 일별 카드의 요약문 모음은 기본 접힘 → "자세히 보기"로 펼친다.
+ * 리포트 뷰 — 일 / 주 / 월 전환 탭. 각 기간을 **buildDigest 로 다이제스트화**해 3계층으로 렌더한다
+ * (docs/report-spec.md §1).
+ *   L0 톤 헤드라인 카드(DigestCard) → L1 항목 한 줄 → L2 접힘 상세(DigestItems)
+ * 집계·정렬·문구는 전부 lib/reports/digest.ts 가 만든 결과를 그대로 쓴다 —
+ * 화면에서 재계산·재정렬하지 않는다(채널 간 판정 불일치 방지).
+ *
+ * 기간 그룹핑(어느 날짜가 어느 카드에 들어가는가)만 이 파일의 책임이며, KST 달력 문자열
+ * 연산(lib/reports/summary 의 순수 헬퍼)만 사용한다.
  * 색·라운드·그림자는 토큰 클래스만 사용.
  */
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import { ChevronDown, Copy, Check, Mail, Share2, X } from "lucide-react";
-import { AdherenceStatusBadge } from "@/components/app/StatusBadge";
-import { fmtDate, kstYmd } from "@/components/app/format";
+import { Share2 } from "lucide-react";
+import { DigestCard } from "@/components/app/DigestCard";
+import { DigestItems } from "@/components/app/DigestItems";
+import { ShareDigestModal } from "@/components/app/ShareDigestModal";
+import { kstYmd } from "@/components/app/format";
 import {
   addDaysYmd,
-  anchor,
-  buildReportSummary,
-  periodLabel,
-  rate,
-  statusChips,
-  weekdayKo,
   weekStartYmd,
-  WEEKDAY_KO,
-  type ReportItem,
   type View,
 } from "@/components/app/reportSummary";
+import { buildDigest, type DigestInput } from "@/lib/reports/digest";
+import type { ReportDigest } from "@/lib/contracts/report-view";
 
-export type { ReportItem } from "@/components/app/reportSummary";
+export type { DigestInput } from "@/lib/reports/digest";
 
 const VIEWS: { key: View; label: string }[] = [
   { key: "DAY", label: "일별" },
@@ -35,38 +33,58 @@ const VIEWS: { key: View; label: string }[] = [
   { key: "MONTH", label: "월별" },
 ];
 
-function StatusChips({ items }: { items: ReportItem[] }) {
-  const chips = statusChips(items);
-  if (chips.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-1.5 text-xs">
-      {chips.map((c) => (
-        <span
-          key={c.status}
-          className="inline-flex items-center gap-1 rounded-base bg-surface px-2 py-1 font-medium text-text-muted"
-        >
-          {c.label}
-          <span className="tabular-nums text-primary">{c.count}</span>
-        </span>
-      ))}
-    </div>
-  );
+/** "YYYY-MM" → 그 달 마지막 날 "YYYY-MM-DD" (다음 달 1일 -1일, 순수 달력 연산). */
+function monthEndYmd(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  const nextFirst = new Date(Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 1))
+    .toISOString()
+    .slice(0, 10);
+  return addDaysYmd(nextFirst, -1);
 }
 
-/** 통화 상세 링크(sessionId 없으면 통화 목록). */
-function hrefOf(item: ReportItem): string {
-  return item.sessionId ? `/app/calls/${item.sessionId}` : "/app/calls";
+/** 뷰별 기간 경계 — 그룹 키(KST 달력)에서 시작·끝 날짜를 만든다. */
+function rangeOf(view: View, key: string): { startYmd: string; endYmd: string } {
+  if (view === "DAY") return { startYmd: key, endYmd: key };
+  if (view === "WEEK") return { startYmd: key, endYmd: addDaysYmd(key, 6) };
+  return { startYmd: `${key}-01`, endYmd: monthEndYmd(key) };
 }
 
-export function ReportsView({ items }: { items: ReportItem[] }) {
+function groupKey(view: View, ymd: string): string {
+  if (view === "DAY") return ymd;
+  if (view === "WEEK") return weekStartYmd(ymd);
+  return ymd.slice(0, 7);
+}
+
+export function ReportsView({ items }: { items: DigestInput[] }) {
   const [view, setView] = useState<View>("DAY");
-  const [shareOpen, setShareOpen] = useState(false);
+  const [shareTarget, setShareTarget] = useState<ReportDigest | null>(null);
 
-  // 날짜(KST) 정렬용 키를 미리 계산.
-  const withYmd = useMemo(
-    () => items.map((i) => ({ item: i, ymd: kstYmd(i.createdAt) })),
-    [items],
-  );
+  // 기간별 다이제스트 — 최신 기간이 위.
+  const digests = useMemo(() => {
+    const map = new Map<string, DigestInput[]>();
+    for (const item of items) {
+      const key = groupKey(view, kstYmd(item.createdAt));
+      const arr = map.get(key) ?? [];
+      arr.push(item);
+      map.set(key, arr);
+    }
+    return [...map.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([key, group]) => ({
+        key,
+        digest: buildDigest(
+          view,
+          group,
+          rangeOf(view, key),
+        ),
+      }));
+  }, [items, view]);
+
+  /**
+   * 일별 카드는 자기 기간의 점이 1개뿐이라 추이가 그려지지 않는다 →
+   * 최신 카드 한 장에만 전체 항목 기준 최근 7일 추이를 얹는다(집계는 동일하게 buildDigest).
+   */
+  const recentTrend = useMemo(() => buildDigest("WEEK", items).trend, [items]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -95,369 +113,33 @@ export function ReportsView({ items }: { items: ReportItem[] }) {
         })}
       </div>
 
-      {/* 요약 보내기 */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setShareOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-base border border-border bg-bg px-3 py-2 text-sm font-semibold text-primary shadow-card transition-colors hover:bg-primary-soft"
-        >
-          <Share2 className="h-4 w-4" aria-hidden />
-          요약 보내기
-        </button>
-      </div>
+      {digests.map(({ key, digest }, idx) => (
+        <section key={`${view}-${key}`} className="flex flex-col gap-3">
+          {/* L0 */}
+          <DigestCard
+            digest={digest}
+            trend={view === "DAY" && idx === 0 ? recentTrend : undefined}
+          />
 
-      {shareOpen && (
-        <ShareSummary
-          view={view}
-          items={items}
-          onClose={() => setShareOpen(false)}
-        />
-      )}
+          {/* L1 + L2 */}
+          <DigestItems seniors={digest.seniors} />
 
-      {view === "DAY" ? (
-        <DayView rows={withYmd} />
-      ) : view === "WEEK" ? (
-        <WeekView rows={withYmd} />
-      ) : (
-        <MonthView rows={withYmd} />
-      )}
-    </div>
-  );
-}
-
-type Row = { item: ReportItem; ymd: string };
-
-// ── 요약 보내기 모달 (미리보기 + 메일 / 복사) ──
-function ShareSummary({
-  view,
-  items,
-  onClose,
-}: {
-  view: View;
-  items: ReportItem[];
-  onClose: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-  const [copyFailed, setCopyFailed] = useState(false);
-
-  const text = useMemo(() => buildReportSummary(view, items), [view, items]);
-  const period = useMemo(
-    () => periodLabel(view, items.map((i) => kstYmd(i.createdAt))),
-    [view, items],
-  );
-
-  const mailto = `mailto:?subject=${encodeURIComponent(
-    `Senior Scheduler 리포트 요약 — ${period}`,
-  )}&body=${encodeURIComponent(text)}`;
-
-  async function copy() {
-    // 비보안 컨텍스트·미지원·권한 거부 시 clipboard API가 없거나 reject됨 → 수동 복사 안내로 폴백.
-    try {
-      if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setCopyFailed(false);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-      setCopyFailed(true);
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-text/40 p-0 sm:items-center sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="리포트 요약 보내기"
-      onClick={onClose}
-    >
-      <div
-        className="flex max-h-[85vh] w-full max-w-md flex-col gap-4 rounded-base border border-border bg-bg p-5 shadow-card"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="break-keep text-base font-bold">리포트 요약 보내기</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="닫기"
-            className="rounded-base p-1 text-text-muted transition-colors hover:bg-surface"
-          >
-            <X className="h-5 w-5" aria-hidden />
-          </button>
-        </div>
-
-        <pre
-          className={`max-h-56 select-text overflow-auto whitespace-pre-wrap break-keep rounded-base p-4 text-sm leading-relaxed text-text [font-family:var(--font-sans)] [-webkit-user-select:text] ${
-            copyFailed ? "bg-primary-soft ring-2 ring-primary" : "bg-surface"
-          }`}
-        >
-          {text}
-        </pre>
-
-        {copyFailed && (
-          <p
-            role="alert"
-            className="break-keep rounded-base bg-accent/10 px-3 py-2 text-sm leading-relaxed text-accent"
-          >
-            복사에 실패했어요. 위 요약 내용을 길게 눌러(또는 드래그해) 직접 복사해
-            주세요.
-          </p>
-        )}
-
-        <div className="flex gap-2">
-          <a
-            href={mailto}
-            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-base bg-primary px-3 py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90"
-          >
-            <Mail className="h-4 w-4" aria-hidden />
-            메일로 보내기
-          </a>
-          <button
-            type="button"
-            onClick={copy}
-            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-base border border-border bg-bg px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-soft"
-          >
-            {copied ? (
-              <Check className="h-4 w-4" aria-hidden />
-            ) : (
-              <Copy className="h-4 w-4" aria-hidden />
-            )}
-            {copied ? "복사됨" : "복사하기"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── 일별 뷰: 하루 = 카드 1개 ──
-function DayView({ rows }: { rows: Row[] }) {
-  const days = useMemo(() => {
-    const map = new Map<string, ReportItem[]>();
-    for (const { item, ymd } of rows) {
-      const arr = map.get(ymd) ?? [];
-      arr.push(item);
-      map.set(ymd, arr);
-    }
-    return [...map.entries()]
-      .sort((a, b) => b[0].localeCompare(a[0])) // 최신 날짜부터
-      .map(([ymd, items]) => ({ ymd, items }));
-  }, [rows]);
-
-  return (
-    <div className="flex flex-col gap-3">
-      {days.map(({ ymd, items }) => (
-        <DayCard key={ymd} ymd={ymd} items={items} />
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShareTarget(digest)}
+              className="inline-flex items-center gap-1.5 rounded-base border border-border bg-bg px-3 py-2 text-sm font-semibold text-primary shadow-card transition-colors hover:bg-primary-soft"
+            >
+              <Share2 className="h-4 w-4" aria-hidden />
+              요약 보내기
+            </button>
+          </div>
+        </section>
       ))}
-    </div>
-  );
-}
 
-function DayCard({ ymd, items }: { ymd: string; items: ReportItem[] }) {
-  const [open, setOpen] = useState(false); // 요약문 모음은 기본 접힘
-  const done = items.filter((i) => i.status === "DONE").length;
-
-  // 피보호자별 그룹(한 줄 요약용)
-  const bySenior = new Map<string, ReportItem[]>();
-  for (const i of items) {
-    const arr = bySenior.get(i.seniorName) ?? [];
-    arr.push(i);
-    bySenior.set(i.seniorName, arr);
-  }
-
-  return (
-    <article className="flex flex-col gap-3 rounded-base border border-border bg-bg p-5 shadow-card">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="break-keep text-base font-bold">
-          {fmtDate(anchor(ymd))} ({weekdayKo(ymd)})
-        </h3>
-        <span className="text-sm text-text-muted tabular-nums">
-          총 {items.length}통 · 완료 {done}
-        </span>
-      </div>
-
-      <StatusChips items={items} />
-
-      {/* 피보호자별 상태 한 줄 */}
-      <div className="flex flex-col gap-1">
-        {[...bySenior.entries()].map(([name, list]) => (
-          <div key={name} className="flex items-center gap-2 text-sm">
-            <span className="break-keep font-medium">{name}</span>
-            <div className="flex flex-wrap gap-1">
-              {list.map((i) => (
-                <AdherenceStatusBadge key={i.id} status={i.status} />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* 요약문 모음 — 기본 접힘, "자세히 보기"로 펼침 */}
-      <div className="border-t border-border pt-3">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          className="flex w-full items-center justify-between gap-2 text-sm font-medium text-text-muted transition-colors hover:text-primary"
-        >
-          <span>통화별 요약 {items.length}건</span>
-          <span className="inline-flex items-center gap-1">
-            {open ? "접기" : "자세히 보기"}
-            <ChevronDown
-              className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
-              aria-hidden
-            />
-          </span>
-        </button>
-
-        {open && (
-          <div className="mt-3 flex flex-col gap-2">
-            {items.map((i) => (
-              <Link
-                key={i.id}
-                href={hrefOf(i)}
-                className="flex flex-col gap-0.5 rounded-base px-1 py-1 transition-colors hover:bg-surface"
-              >
-                <span className="break-keep text-xs text-text-muted">
-                  {i.seniorName} · {i.title}
-                </span>
-                <p className="line-clamp-2 break-keep text-sm leading-relaxed">
-                  {i.summary}
-                </p>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-    </article>
-  );
-}
-
-// ── 주별 뷰: 주(월~일, KST) = 카드 1개 ──
-function WeekView({ rows }: { rows: Row[] }) {
-  const weeks = useMemo(() => {
-    const map = new Map<string, ReportItem[]>();
-    for (const { item, ymd } of rows) {
-      const wk = weekStartYmd(ymd);
-      const arr = map.get(wk) ?? [];
-      arr.push(item);
-      map.set(wk, arr);
-    }
-    return [...map.entries()]
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([start, items]) => ({ start, items }));
-  }, [rows]);
-
-  return (
-    <div className="flex flex-col gap-3">
-      {weeks.map(({ start, items }) => {
-        const end = addDaysYmd(start, 6);
-        const done = items.filter((i) => i.status === "DONE").length;
-        // 요일별 미니 막대(월~일) — 요일별 이행률(DONE/전체) 표현. 집계 로직은 기존과 동일(DONE 카운트).
-        const dayCells = Array.from({ length: 7 }, (_, idx) => {
-          const dayYmd = addDaysYmd(start, idx);
-          const dayItems = items.filter((i) => kstYmd(i.createdAt) === dayYmd);
-          const dayDone = dayItems.filter((i) => i.status === "DONE").length;
-          const label = WEEKDAY_KO[(idx + 1) % 7];
-          return {
-            label,
-            hasReport: dayItems.length > 0,
-            rate: rate(dayDone, dayItems.length),
-          };
-        });
-        return (
-          <article
-            key={start}
-            className="flex flex-col gap-4 rounded-base border border-border bg-bg p-5 shadow-card"
-          >
-            <div className="flex items-baseline justify-between gap-3">
-              <h3 className="break-keep text-base font-bold">
-                {fmtDate(anchor(start))} ~ {fmtDate(anchor(end))}
-              </h3>
-              <p className="text-sm text-text-muted">
-                <span className="text-xl font-bold text-primary tabular-nums">
-                  {rate(done, items.length)}%
-                </span>{" "}
-                <span className="tabular-nums">
-                  ({done}/{items.length}건)
-                </span>
-              </p>
-            </div>
-
-            {/* 요일별 이행률 미니 막대 차트 (월~일) — 순수 CSS 높이, 색은 primary 토큰. */}
-            <div className="flex items-end justify-between gap-2">
-              {dayCells.map((d, i) => (
-                <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
-                  <div className="flex h-16 w-full items-end justify-center">
-                    <div
-                      role="img"
-                      aria-label={
-                        d.hasReport
-                          ? `${d.label}요일 이행률 ${d.rate}%`
-                          : `${d.label}요일 기록 없음`
-                      }
-                      className={`w-full max-w-[1.75rem] rounded-base transition-all ${
-                        d.hasReport ? "bg-primary" : "bg-primary/15"
-                      }`}
-                      style={{ height: `${d.hasReport ? Math.max(d.rate, 6) : 6}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-text-muted">{d.label}</span>
-                </div>
-              ))}
-            </div>
-
-            <StatusChips items={items} />
-          </article>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── 월별 뷰: 월 = 카드 1개 ──
-function MonthView({ rows }: { rows: Row[] }) {
-  const months = useMemo(() => {
-    const map = new Map<string, ReportItem[]>();
-    for (const { item, ymd } of rows) {
-      const key = ymd.slice(0, 7); // YYYY-MM
-      const arr = map.get(key) ?? [];
-      arr.push(item);
-      map.set(key, arr);
-    }
-    return [...map.entries()]
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([ym, items]) => ({ ym, items }));
-  }, [rows]);
-
-  return (
-    <div className="flex flex-col gap-3">
-      {months.map(({ ym, items }) => {
-        const [y, m] = ym.split("-");
-        const done = items.filter((i) => i.status === "DONE").length;
-        return (
-          <article
-            key={ym}
-            className="flex flex-col gap-4 rounded-base border border-border bg-bg p-5 shadow-card"
-          >
-            <div className="flex items-baseline justify-between gap-3">
-              <h3 className="break-keep text-base font-bold">
-                {y}년 {Number(m)}월
-              </h3>
-              <p className="text-sm text-text-muted">
-                <span className="text-xl font-bold text-primary tabular-nums">
-                  {rate(done, items.length)}%
-                </span>{" "}
-                <span className="tabular-nums">총 {items.length}통</span>
-              </p>
-            </div>
-            <StatusChips items={items} />
-          </article>
-        );
-      })}
+      {shareTarget ? (
+        <ShareDigestModal digest={shareTarget} onClose={() => setShareTarget(null)} />
+      ) : null}
     </div>
   );
 }

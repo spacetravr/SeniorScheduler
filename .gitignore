@@ -34,3 +34,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# git worktree (병렬 에이전트 격리 — 저장소 하위에 생성되므로 추적 금지)
+.claude/worktrees/
