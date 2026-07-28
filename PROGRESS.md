@@ -6,6 +6,45 @@
 
 ---
 
+## 세션 #13 (2026-07-28) — 리포트 재설계 · 사이트 IA 3분리 · 온보딩 · 카드뉴스 (contract-first 4레인 병렬)
+
+### 현재 상태 한 줄
+**main(b5891e1) = FOURTH-PLAN 4레인 전부 머지, 테스트 435/435·tsc·build 통과. ⚠️ 프로덕션 미배포(세션 #11·#13 분량 누적) — 사용자 승인 대기. 0010 마이그레이션 미실행(단 fail-open 이라 앱은 정상 동작).**
+
+### 사용자 지시 (세션 시작)
+①리포트를 자녀가 보기 간단·핵심·가독성 좋게 + 이메일/카톡 수신 ②홈페이지를 랜딩(사전등록)과 분리해 기업형으로 ③카드뉴스 가독성↑·"AI틱함" 제거 ④앱 첫 진입 시 간단한 신상 조사 후 대시보드 ⑤리서치 기반 수정·추가 ⑥확장성 설계 ⑦agent별 역할 분담 후 실행
+
+### 결정사항 (오케스트레이터 — 사용자 미응답으로 권장안 채택)
+- **카톡 = 공유 버튼 먼저 + 알림톡 어댑터 스텁**. 채널 심사(7~10일) 없이 즉시 가동, 심사 후 env만 채우면 활성(코드 변경 0)
+- **사이트 = `/` 홈 · `/service` 서비스 상세 · `/preregister` 사전등록 랜딩** 3분리. `/` 는 계속 200(외부 링크 무파손)
+- **온보딩 = 2스텝 5문항 · 건너뛰기 허용**, 재노출 없음
+- **알림 기본값 = EXCEPTION(이상 신호만)**
+
+### 완료 — Lane 0 계약 (오케스트레이터, bfbe379)
+- `lib/contracts/report-view.ts`(ReportDigest 3계층·톤·집계+`EMERGENCY_DISCLAIMER`) / `notify.ts`(NotifyAdapter·레벨 3종) / `onboarding.ts`(5문항 enum)
+- `lib/reports/digest.ts` — `buildDigest`(집계·판정 **단일 소스**) + `renderShareText`(카톡 공유) + 테스트 14
+- `docs/report-spec.md`(리포트 설계 본문), `docs/site-structure.md`(사이트 IA), `FOURTH-PLAN.md`
+
+### 완료 — 4레인 (전부 reviewer PASS 후 머지)
+- **Lane B 사이트 IA** (feat/ui-site-ia → 12f8904): `/service` 신설 + `/` 기업형 홈 재작성 + `/preregister` 정리 / `TrustBadges` 신규(본인동의·녹음미저장·AI자기고지·언제든해지) / **"대신" 프레이밍 전면 제거**(마케팅 경로 grep 0건 — inTouch 역풍 근거) / AI 자기고지 FAQ 신설 / 푸터 119 고지 / ReportPreviewCard variant 2종(완료·확인필요) + "억지로 판단하지 않습니다" 전면화. **CTA 추적 4파일 무변경 확인**
+- **Lane D 카드뉴스** (feat/assets-cardnews-v2 → ffb5970, 패스트트랙): Set01 리뉴얼 + **Set02 신규(리포트 소개 — 정직한 판정 전면화)**, PNG 12장 1080×1080, 캡션 2종, README(재생산 절차). AI틱함 제거 = 이모지·불릿·도트 인디케이터 삭제, 레이아웃 5종 분화, 영문 워드마크→한글 Pretendard, 헤드라인 78~96px
+- **Lane A 백엔드** (feat/data-report-notify → b5891e1): 0010 마이그레이션(온보딩 5컬럼+`notify_level`, 멱등 백필·CHECK, 기존 RLS 커버) / `lib/notify/`(어댑터+레벨 라우터, **throw 금지**·PII 무로그) / 이메일 카드 렌더러(600px 인라인·이스케이프·고지 2종·수신거부) / 주간 크론 **화요일 09:00 KST**(`0 0 * * 2`) / 예외 알림 훅(콜백·디스패치 2지점, 이중 try/catch로 통화 파이프라인 무영향) / 온보딩 서버액션
+- **Lane C 앱 화면** (feat/ui-report-onboarding → b5891e1): 리포트 3계층(L0 톤 카드+스파크라인 / L1 예외 우선 / L2 예외만 기본 펼침) / 공유 3버튼(메일·카톡·복사, `renderShareText` 사용, Web Share→클립보드 폴백) / 대시보드 "오늘의 안심 요약"(ALERT 시 `tel:` 원버튼, 3연속 MISSED 배너 흡수) / `/app/onboarding` 2스텝 / 알림 레벨 3지선다(NotifySettingsForm·NotifyToggle 삭제)
+
+### 사고·교훈
+- **A↔C 시그니처 불일치 tsc 4건** — Lane C 지시문엔 서버액션 시그니처를 명시했으나 Lane A엔 반환형까지 주지 않아 발생. 오케스트레이터가 조정(82e352e). **교훈: 레인 간 접점 함수는 계약 파일에 시그니처까지 박아야 한다**(이번엔 프롬프트로만 전달)
+- **잠재 사고 1건 차단**: 원설계대로면 0010 미적용 시 조회 실패 → 전 사용자가 온보딩에 갇힘. `available:false` 구분해 **fail-open** 으로 수정
+- `git add -A` 가 워크트리 4개를 임베드 저장소로 커밋 → 되돌리고 `.claude/worktrees/` gitignore 추가(반복 문제 근절)
+
+### 다음 할 일
+1. **배포** (세션 #11+#13 누적분 — 사용자 승인 대기). 배포 후 SNS 게시·설문 재배포 가동
+2. **[사용자] 0010 마이그레이션 실행** — 미실행 시 앱은 정상이나(fail-open) 온보딩 저장·알림레벨 변경 불가
+3. **[사용자] Resend 키** — 없으면 주간 메일 조용히 skip. 주간 발송 요일이 월→화로 변경됨
+4. 후속(reviewer 논블로킹): 예외 알림 하루 중복 발송 dedupe(notify_log) / `NotifyLevelForm` 초깃값을 `getNotifyLevel()` 직접 사용으로 / `composeWeeklyDigest` 데드코드 제거 / `/about` 이 `/service` 와 콘텐츠 중복 → 회사 소개로 재편 / 온보딩 `preferred_call_slot` → ScheduleForm 프리필 연결 / 연속 MISSED 승격을 `buildDigest`로 하향
+5. **알림톡 도입 시 선행**: `guardians.phone` 컬럼 없음 — 수신자 필드 추가 마이그레이션 필요(어댑터·렌더러는 준비 완료)
+
+---
+
 ## 세션 #12 (2026-07-27) — 레퍼런스 리서치 4종 + 고도화 재계획 (THIRD-PLAN·MARKETING-PLAN)
 
 ### 현재 상태 한 줄
