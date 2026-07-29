@@ -20,6 +20,16 @@
 - **핫픽스(패스트트랙)**: `fmtPhone` 신설 — 피보호자 목록에서 `01039034652` / `010-3903-4652` 가 나란히 보이던 표시 불일치 해소(표시 전용, 저장값 무변경, 테스트 6개 → 470→476)
 - 홈 히어로 "빈 박스"는 풀페이지 스크린샷 로딩 타이밍 artifact — 실제로는 정상 렌더(원본 6.4MB → `/_next/image` 최적화 27KB, 0.12s)
 
+### 세션 #14 후반 — 메일 파이프라인 점검 + 주간 요약 미발송 버그 수정 (main c7d9a11, 배포 완료)
+- **버그 발견·수정**: 세션 #13 알림 레벨 3지선다 개편 때 `notify_weekly_summary` 를 켤 UI 가 사라짐 + 컬럼 기본값 false(0008) → **주간 메일 발송 대상이 영구 0명**이었음(크론은 `notify_weekly_summary=true` 만 조회). 스펙(report-spec §3·notifyLevel.ts)은 "상위 레벨도 주간 요약 포함"이라 스펙 쪽으로 정렬:
+  - `0012_weekly_summary_default_on.sql` — 기본값 true + 기존 행 백필(멱등). **⚠️ 사용자 SQL Editor 실행 대기**
+  - `getWeeklySummary`/`updateWeeklySummary` 서버 액션 + `WeeklySummaryToggle`(설정 알림 섹션, 낙관적 갱신)
+  - 레벨은 통화 직후 알림만 관장. WEEKLY_ONLY 선택 시에만 주간 수신 강제 ON. `DEFAULT_NOTIFY_SETTINGS` 재동기화
+  - 로컬 UI 실조작 검증: 토글 ON → DB `notify_weekly_summary=true` 반영 → 새로고침 유지 확인
+- **Resend 실발송 스모크 PASS**: 더미 리포트 3건 → `buildDigest("WEEK")` → `renderReportEmail` → `ResendAdapter` 실호출 → `{ok:true}`. 제목 `[주간 리포트] 7월 22일 ~ 7월 28일 · 이상 신호 2건`, HTML 3,640바이트. **가입 이메일(spacetr17@khu.ac.kr) 수신 확인 필요**. 임시 테스트 파일은 검증 후 삭제
+- **메일 경로는 2개뿐**: ① 예외 알림(통화 리포트 직후 `notifyExceptionForSession` → 오늘 KST 다이제스트 톤 판정 → `shouldNotify` → Resend) ② 주간 요약(화 09:00 KST 크론). 둘 다 `notify_log` 하루 1회 상한, 어떤 경로도 throw 금지
+- **Resend 제약 정리**: 무료 플랜 월 3,000통·일 100통, **검증 도메인 1개 포함 — 결제 불필요**. 현재 발신자 `onboarding@resend.dev` 는 가입자 본인에게만 발송 가능 → 외부 보호자 발송하려면 도메인 소유 + DNS 인증 + `RESEND_FROM` 교체 필요
+
 ### 발견 — 조치 필요 (사용자 결정)
 1. **`call-dispatch` 워크플로 `disabled_manually`** (실행 이력 0건). 이것이 7/17 이후 통화 세션 0건의 단일 원인. 피보호자 2명 모두 `consent_at`+`self_consent_at` 완료 상태이고 활성 일정 6건이 켜져 있으므로, **워크플로를 켜는 즉시 실제 번호(010-3903-4652)로 진짜 전화가 발신됨**. ClawOps TTS 품질 이슈가 미해결이므로 켜기 전 사용자 승인 필수
 2. **GitHub Actions 스케줄 지연**: uptime(`*/10`)이 실제로는 1~1.5시간 간격으로 실행됨(GitHub best-effort). 발신 정밀도가 필요해지면 벤더 스케줄러/Vercel Cron 이전 검토
