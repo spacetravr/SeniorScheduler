@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmtDate, fmtTime, fmtDateTime, kstYmd, fmtRrule } from "./format";
+import { fmtDate, fmtTime, fmtDateTime, kstYmd, fmtRrule, fmtPhone } from "./format";
 
 const ISO = "2026-07-06T09:05:00+09:00";
 // 같은 순간을 UTC(+00:00) 오프셋으로 표현 (Supabase REST 실제 반환 형태)
@@ -91,5 +91,34 @@ describe("fmtRrule", () => {
     expect(fmtRrule("")).toBe("매주");
     expect(fmtRrule("FREQ=MONTHLY")).toBe("매주");
     expect(fmtRrule("나쁜입력")).toBe("매주");
+  });
+});
+
+describe("fmtPhone", () => {
+  it("하이픈 없는 휴대폰 11자리를 3-4-4로 표기한다", () => {
+    expect(fmtPhone("01039034652")).toBe("010-3903-4652");
+  });
+
+  it("이미 하이픈이 있는 번호도 같은 표기로 정규화한다", () => {
+    expect(fmtPhone("010-3903-4652")).toBe("010-3903-4652");
+  });
+
+  it("휴대폰 10자리는 3-3-4로 표기한다", () => {
+    expect(fmtPhone("01123456789".slice(0, 10))).toBe("011-234-5678");
+  });
+
+  it("서울 지역번호는 2-4-4 / 2-3-4로 표기한다", () => {
+    expect(fmtPhone("0212345678")).toBe("02-1234-5678");
+    expect(fmtPhone("021234567")).toBe("02-123-4567");
+  });
+
+  it("그 외 지역번호는 3자리 국번으로 끊는다", () => {
+    expect(fmtPhone("0311234567")).toBe("031-123-4567");
+    expect(fmtPhone("03112345678")).toBe("031-1234-5678");
+  });
+
+  it("인식 못 하는 형태는 원문을 그대로 둔다", () => {
+    expect(fmtPhone("+82 10 3903 4652")).toBe("+82 10 3903 4652");
+    expect(fmtPhone("없음")).toBe("없음");
   });
 });

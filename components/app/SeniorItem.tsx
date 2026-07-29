@@ -7,7 +7,7 @@
 import { useState, useTransition } from "react";
 import type { Senior } from "@/lib/contracts/domain";
 import { setSeniorConsent, deleteSenior } from "@/lib/actions/seniors";
-import { fmtDate } from "@/components/app/format";
+import { fmtDate, fmtPhone } from "@/components/app/format";
 import { SeniorForm } from "@/components/app/SeniorForm";
 import { ConsentBadge } from "@/components/app/StatusBadge";
 import { getConsentStatus, SELF_CONSENT_PENDING_HINT } from "@/components/app/consent";
@@ -61,7 +61,7 @@ export function SeniorItem({ senior }: { senior: Senior }) {
             </span>
           </div>
           <span className="text-sm text-text-muted tabular-nums">
-            {senior.phone}
+            {fmtPhone(senior.phone)}
           </span>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
