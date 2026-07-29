@@ -48,9 +48,9 @@
 > **0번은 오늘 발견된 열려 있는 보안 구멍이다. 다른 어떤 작업보다 먼저 처리할 것.**
 
 0. 🔴 **공개 저장소에 평문 자격증명 노출 — 즉시 교체 필요**
-   - `github.com/spacetravr/SeniorScheduler` 는 **public**(`"private": false` API 확인). 그런데 이 파일 `PROGRESS.md` 에 아래가 커밋돼 있음:
-     - 앱 로그인 비밀번호 `ansim-beta-0707` (spacetr17@khu.ac.kr) — **세션 #14 에서 실제 로그인 성공 = 지금도 유효**
-     - `ADMIN_PASSWORD` = `vs-beta-2026` (`/admin/metrics` 게이트)
+   - `github.com/spacetravr/SeniorScheduler` 는 **public**(`"private": false` API 확인). 그런데 이 파일 `PROGRESS.md` 의 **세션 #4·#1 기록에 두 자격증명이 평문으로** 커밋돼 있음(값은 여기 재기재하지 않는다 — 아래 위치 참조):
+     - 앱 로그인 비밀번호 (spacetr17@khu.ac.kr) — 세션 #4 "진행 중(Phase 2 스모크)" 항목. **세션 #14 에서 실제 로그인 성공 = 지금도 유효**
+     - `ADMIN_PASSWORD` (`/admin/metrics` 게이트) — 세션 #1 "완료" 항목 및 "기타 대기 항목"
    - 영향: 누구나 저장소를 읽고 로그인해 **피보호자 2명의 실명·생년·전화번호 열람 가능**
    - 조치: ① 앱 비밀번호 교체(사용자가 설정 화면에서 또는 admin API) ② `ADMIN_PASSWORD` 교체 + Vercel env 갱신 + 재배포 ③ 저장소 private 전환 검토
    - **주의: git 히스토리에 옛 값이 남으므로 문서에서 지우는 것만으로는 무효. 값 자체를 교체해야 함**
