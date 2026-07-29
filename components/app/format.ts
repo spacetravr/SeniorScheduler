@@ -42,6 +42,30 @@ const RRULE_DAY_LABEL: Record<string, string> = {
   SU: "일",
 };
 
+/**
+ * 휴대폰/일반 전화번호 → 하이픈 표기 (표시 전용).
+ * 저장값이 하이픈 유무로 제각각이라 화면에서만 통일한다. 인식 못 하는 형태는 원문 그대로.
+ */
+export function fmtPhone(phone: string): string {
+  const d = phone.replace(/[^0-9]/g, "");
+  if (/^01[016789]\d{7,8}$/.test(d)) {
+    return d.length === 11
+      ? `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`
+      : `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+  }
+  if (/^02\d{7,8}$/.test(d)) {
+    return d.length === 10
+      ? `${d.slice(0, 2)}-${d.slice(2, 6)}-${d.slice(6)}`
+      : `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5)}`;
+  }
+  if (/^0\d{2}\d{7,8}$/.test(d)) {
+    return d.length === 11
+      ? `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`
+      : `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+  }
+  return phone;
+}
+
 /** RRULE 문자열을 한국어 반복 설명으로 (표시 전용) */
 export function fmtRrule(rrule: string): string {
   if (rrule.includes("FREQ=DAILY")) return "매일";
