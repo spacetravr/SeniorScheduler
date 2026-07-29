@@ -6,8 +6,9 @@
  *
  * 낙관적 업데이트: 선택 즉시 반영 → 저장 실패 시 이전 값으로 원복 + 인라인 오류 안내
  * (기존 NotifySettingsForm 패턴 유지).
- * "오경보 관리가 곧 제품" — 기본·권장은 EXCEPTION 이며, 주간 요약은 모든 레벨에 포함된다
- * (기존 '주간 요약' 토글과의 모순 제거, docs/report-spec.md §3).
+ * "오경보 관리가 곧 제품" — 기본·권장은 EXCEPTION.
+ * 주간 요약은 레벨과 별개의 정기 리포트라 전용 토글(WeeklySummaryToggle)이 담당한다.
+ * 기본값은 ON(0012). WEEKLY_ONLY 레벨을 고르면 서버 액션이 주간 수신을 강제로 켠다.
  */
 import { useState, useTransition } from "react";
 import { Check } from "lucide-react";
@@ -95,7 +96,7 @@ export function NotifyLevelForm({
       ) : null}
 
       <p className="break-keep text-xs leading-relaxed text-text-muted">
-        알림은 로그인 이메일로 보내드리며, 주간 요약은 매주 화요일 오전에 발송됩니다.
+        알림은 로그인 이메일로 보내드립니다. 주간 요약 메일은 아래에서 따로 켜고 끄실 수 있어요.
       </p>
     </div>
   );
