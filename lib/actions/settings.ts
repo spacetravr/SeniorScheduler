@@ -122,7 +122,9 @@ export async function getNotifyLevel(): Promise<
  *   ALL         → call_result=true,  missed=true
  *   EXCEPTION   → call_result=false, missed=true
  *   WEEKLY_ONLY → call_result=false, missed=false, weekly_summary=true
- * 주간 요약 수신(notify_weekly_summary)은 ALL/EXCEPTION 에서는 별개 의사표시이므로 건드리지 않는다.
+ * 주간 요약 수신(notify_weekly_summary)은 ALL/EXCEPTION 에서는 **별개 의사표시**이므로 건드리지 않는다
+ * — 전용 토글(updateWeeklySummary)이 담당한다. 기본값은 0012 에서 ON 으로 뒤집혔다.
+ * WEEKLY_ONLY 만 예외: 그 레벨을 고르는 행위 자체가 주간 요약 수신 의사이므로 강제로 켠다.
  */
 export async function updateNotifyLevel(raw: unknown): Promise<ActionResult> {
   const parsed = notifyLevelSchema.safeParse(raw);
@@ -151,5 +153,63 @@ export async function updateNotifyLevel(raw: unknown): Promise<ActionResult> {
 
   revalidatePath("/app/settings");
   revalidatePath("/app");
+  return { ok: true };
+}
+
+// ── 주간 요약 수신 토글 (notify_weekly_summary 전용) ─────────────────────────────
+
+const weeklySummarySchema = z.boolean();
+
+/**
+ * 로그인 guardian 의 주간 요약 수신 여부 조회.
+ * 오류·미기록이면 **수신(true)** 으로 강등한다 — 0012 이후 기본값이 ON 이므로 화면 초깃값이
+ * 실제 발송 대상 여부와 어긋나지 않게(꺼진 것처럼 보였는데 메일이 오는 상황 방지).
+ */
+export async function getWeeklySummary(): Promise<
+  { ok: true; enabled: boolean } | { ok: false; error: string }
+> {
+  const auth = await requireGuardianId();
+  if (!auth.ok) return auth;
+
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase
+    .from("guardians")
+    .select("notify_weekly_summary")
+    .eq("id", auth.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[settings] get weekly failed:", error.code, error.message);
+    return { ok: false, error: "알림 설정을 불러오지 못했습니다." };
+  }
+  return { ok: true, enabled: data?.notify_weekly_summary ?? true };
+}
+
+/**
+ * 주간 요약 수신 저장 — 자기 행만 update.
+ * 레벨(notify_level)은 건드리지 않는다. 단 WEEKLY_ONLY 레벨에서 이 토글을 끄면 아무 알림도
+ * 받지 않게 되는데, 그것도 사용자의 정당한 선택이므로 막지 않고 화면 문구로만 안내한다.
+ */
+export async function updateWeeklySummary(raw: unknown): Promise<ActionResult> {
+  const parsed = weeklySummarySchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, error: "주간 요약 설정 값이 올바르지 않습니다." };
+  }
+
+  const auth = await requireGuardianId();
+  if (!auth.ok) return auth;
+
+  const supabase = createServerSupabase();
+  const { error } = await supabase
+    .from("guardians")
+    .update({ notify_weekly_summary: parsed.data })
+    .eq("id", auth.id);
+
+  if (error) {
+    console.error("[settings] update weekly failed:", error.code, error.message);
+    return { ok: false, error: "알림 설정 저장에 실패했습니다." };
+  }
+
+  revalidatePath("/app/settings");
   return { ok: true };
 }

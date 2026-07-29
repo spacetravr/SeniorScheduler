@@ -1,6 +1,8 @@
 /**
  * 설정 (/app/settings) — 계정·비밀번호·크레딧·알림 레벨·온보딩 설문 재작성.
  * 알림은 boolean 토글 3종 대신 **레벨 3지선다**(NotifyLevelForm)로 통합했다 (docs/report-spec.md §3).
+ * 단 주간 요약 수신만은 별개 의사표시라 전용 토글(WeeklySummaryToggle)로 남긴다 —
+ * 3지선다 개편 때 이 값을 켤 UI 가 사라져 주간 메일이 전면 미발송이던 문제를 되돌린 것(0012).
  * 초기 표시값은 기존 boolean 설정에서 유도한다(components/app/notifyLevel.ts, 순수 함수).
  */
 import Link from "next/link";
@@ -14,6 +16,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { NotifyLevelForm } from "@/components/app/NotifyLevelForm";
+import { WeeklySummaryToggle } from "@/components/app/WeeklySummaryToggle";
 import { toNotifyLevel } from "@/components/app/notifyLevel";
 import { LogoutButton } from "@/components/app/LogoutButton";
 import { PasswordChangeForm } from "@/components/app/PasswordChangeForm";
@@ -117,6 +120,7 @@ export default async function SettingsPage() {
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold">알림</h2>
         <NotifyLevelForm initial={toNotifyLevel(notifySettings)} />
+        <WeeklySummaryToggle initial={notifySettings.notify_weekly_summary} />
       </section>
 
       <section className="flex flex-col gap-3">

@@ -11,7 +11,7 @@ export const notifySettingsSchema = z.object({
   notify_call_result: z.boolean(),
   /** 불발(MISSED) 알림 수신 */
   notify_missed: z.boolean(),
-  /** 주간 요약 메일 수신 (기본 OFF) — 주간 리포트 cron 발송 대상 필터 */
+  /** 주간 요약 메일 수신 (0012 이후 기본 ON) — 주간 리포트 cron 발송 대상 필터 */
   notify_weekly_summary: z.boolean(),
 });
 export type NotifySettings = z.infer<typeof notifySettingsSchema>;
@@ -20,5 +20,5 @@ export type NotifySettings = z.infer<typeof notifySettingsSchema>;
 export const DEFAULT_NOTIFY_SETTINGS: NotifySettings = {
   notify_call_result: true,
   notify_missed: true,
-  notify_weekly_summary: false,
+  notify_weekly_summary: true,
 };
