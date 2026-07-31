@@ -129,6 +129,27 @@ describe("buildDigest", () => {
     ]);
     expect(d.trend).toEqual([100, 50]);
   });
+
+  // 회귀 방지: 가입 직후(리포트 0건) 대시보드가 range 없이 WEEK 다이제스트를 만들면
+  // startYmd 가 "" 가 되어 날짜 포맷이 RangeError 로 터졌고, /app 이 통째로 500 이었다.
+  it("리포트 0건 + 기간 미지정이어도 던지지 않고 '기록 없음' 으로 낸다", () => {
+    const d = buildDigest("WEEK", []);
+    expect(d.period.label).toBe("기록 없음");
+    expect(d.stats.total).toBe(0);
+    expect(d.stats.adherenceRate).toBeNull();
+    expect(d.seniors).toEqual([]);
+    expect(d.trend).toEqual([]);
+  });
+
+  it("리포트 0건이어도 기간이 주어지면 그 기간 라벨을 쓴다", () => {
+    const d = buildDigest("DAY", [], { startYmd: "2026-07-31", endYmd: "2026-07-31" });
+    expect(d.period.label).toBe("7월 31일 (금)");
+    expect(d.tone).toBe("CALM");
+  });
+
+  it("공유 텍스트도 기록 0건에서 던지지 않는다", () => {
+    expect(() => renderShareText(buildDigest("WEEK", []))).not.toThrow();
+  });
 });
 
 describe("renderShareText", () => {
