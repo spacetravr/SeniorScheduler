@@ -52,7 +52,17 @@ function fmtShortDay(ymd: string): string {
   return `${Number(formatInTimeZone(iso, KST, "M"))}월 ${Number(formatInTimeZone(iso, KST, "d"))}일`;
 }
 
+/**
+ * 기간 라벨.
+ *
+ * 빈 ymd 방어(중요): 리포트 0건 + range 미지정이면 startYmd 가 "" 가 된다.
+ * 이때 anchor("") = "T12:00:00+09:00" 은 Invalid Date 라 formatInTimeZone 이
+ * RangeError 를 던지고, 이 함수를 부르는 서버 컴포넌트(대시보드)가 통째로 500 이 된다
+ * — 실제로 **가입 직후 통화 기록이 0건인 신규 사용자 전원**이 /app 진입에 실패했다.
+ * 판정 가능한 기간이 없으면 억지 날짜를 만들지 않고 "기록 없음" 으로 그대로 알린다.
+ */
 function periodLabelOf(kind: DigestPeriod, startYmd: string, endYmd: string): string {
+  if (!startYmd) return "기록 없음";
   if (kind === "DAY") return fmtDayLabel(startYmd);
   if (startYmd === endYmd) return fmtShortDay(startYmd);
   return `${fmtShortDay(startYmd)} ~ ${fmtShortDay(endYmd)}`;
